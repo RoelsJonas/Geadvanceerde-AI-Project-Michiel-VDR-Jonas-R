@@ -3,6 +3,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 public class Main {
+    // VALIDATE THE SOLUTION USING  java -jar validator.jar .\\instances\\umps8.txt 2 2 .\\solutions\\sol_umps8_2_2.txt
     // CONSTANTS
     private static final boolean DEBUG = true;
 
@@ -11,7 +12,7 @@ public class Main {
     public static int nTeams;
     public static int nUmps;
     public static int nRounds;
-    public static Solution best;
+    public static String best = "No solution found";
     public static int upperBound = Integer.MAX_VALUE;
     public static int lowerBound = 0;
     public static int q1 = 2;  // umpire not in venue for q1 consecutive rounds
@@ -25,37 +26,65 @@ public class Main {
     public static void main(String[] args) throws Exception {
 
         // Open the file
-        String fileName = "instances/umps8.txt";
-        readInput(fileName);
+        fileName = "umps8";
+        readInput("instances/" + fileName + ".txt");
         processGames();
-        best = new Solution();
+//        best = new Solution();
 
         Solution currentSolution = new Solution();
         currentSolution.totalDistance = 0;
+        branchBound(currentSolution, 0, 0);
+//        System.out.println(best);
     }
 
     private static void branchBound(Solution currentSolution, int umpire, int round) {
-        int nextUmpire = ++umpire % nUmps;
-        int nextRound = umpire == nUmps ? ++round : round;
-        int[] feasibleNextGames = getFeasibleAllocations();
-        for(int game : feasibleNextGames) {
-            if (game < 0) continue;
+        // Determine the next umpire and round
+        int nextUmpire = (umpire+1) % nUmps;
+        int nextRound = (nextUmpire == 0) ? round+1 : round;
+
+        // Get an array (sorted by shorted distance) of all feasible next games the current umpire can be assigned to in this round
+        Integer[] feasibleNextGames = getFeasibleAllocations(umpire, round);
+        for(Integer game : feasibleNextGames) {
+            if (game < 0 || currentSolution.roundAlreadyHasGame(round, game)) continue; // Infeasible games get marked with a negative number
             int cost = currentSolution.calculateDistance(round, umpire, game);
             if (currentSolution.totalDistance + cost + lowerBound < upperBound) {  // todo: in aparte methode?
+                int homeIndex = games[round][game].home-1;
+                int awayIndex = games[round][game].away-1;
                 currentSolution.addGame(round, umpire, game, cost);
+                int previousQ1 = umpires[umpire].q1TeamCounter[homeIndex];
+                umpires[umpire].q1TeamCounter[homeIndex] = round;
+                int previousQ2Home = umpires[umpire].q2TeamCounter[homeIndex];
+                int previousQ2Away = umpires[umpire].q2TeamCounter[awayIndex];
+                umpires[umpire].q2TeamCounter[homeIndex] = round;
+                umpires[umpire].q2TeamCounter[awayIndex] = round;
+
+                // If there is a next round we recurse else we start the local search algorithm
                 if (nextRound < nRounds) {
                     branchBound(currentSolution, nextUmpire, nextRound);
                 }
                 else {
-                    Solution betterSolution = localSearch(currentSolution);
-                    if (best.totalDistance > betterSolution.totalDistance) {
-                        best = betterSolution;
-                        upperBound = best.totalDistance;
+                    // check if all team-venues are visited by every umpire
+                    boolean feasible = true;
+                    for (Umpire u: umpires) if(!u.hasVisitedAllLocations()) {
+                        feasible = false;
+                        break;
+                    }
+                    if(feasible) {
+                        Solution betterSolution = localSearch(currentSolution);
+                        if (upperBound > betterSolution.totalDistance) {
+                            best = betterSolution.toString();
+                            upperBound = betterSolution.totalDistance;
+                            System.out.println("New best solution: " + upperBound);
+                            writeSolution("solutions/sol_" + fileName +"_" + q1 + "_" + q2 + ".txt", betterSolution);
+//                            System.exit(0);
+                        }
                     }
                 }
                 currentSolution.removeGame(round, umpire, game, cost);
+                umpires[umpire].q1TeamCounter[homeIndex] = previousQ1;
+                umpires[umpire].q2TeamCounter[homeIndex] = previousQ2Home;
+                umpires[umpire].q2TeamCounter[awayIndex] = previousQ2Away;
             }
-
         }
     }
 
@@ -151,5 +180,16 @@ public class Main {
                 Arrays.sort(games[round-1][currentGame].nextGames, Comparator.comparingInt((Integer game) -> games[finalRound - 1][finalCurrentGame].distancesToNext[game]));
             }
         }
+    }
+
+    private static void writeSolution(String fileName, Solution sol) {
+        try {
+            PrintWriter pw = new PrintWriter(fileName);
+            pw.print(sol);
+            pw.close();
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 }

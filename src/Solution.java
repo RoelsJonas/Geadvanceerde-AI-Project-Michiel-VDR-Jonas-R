@@ -1,3 +1,6 @@
+import java.io.FileWriter;
+import java.util.Arrays;
+
 public class Solution {
     public int[][] sol;
     public int totalDistance;
@@ -34,4 +37,21 @@ public class Solution {
         totalDistance -= cost;
     }
 
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+        for(int i = 0; i<Main.nUmps; i++) {
+//            sb.append("\t");
+            for(int j = 0; j<Main.nRounds; j++) sb.append(Main.games[j][sol[j][i]].home).append(" ");
+            sb.append("\n");
+        }
+//        sb.append(", totalDistance=").append(totalDistance);
+//        sb.append(", nAllocatedGames=").append(nAllocatedGames);
+//        sb.append('}');
+        return sb.toString();
+    }
+
+    public void writeSolution(String fileName) {
+
+    }
 }
