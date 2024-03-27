@@ -1,6 +1,7 @@
 public class Game {
     public int home;
     public int away;
+    public int ump; // TODO UMPIRE TOEWIJZEN
     public int[] distancesToNext;
     public Integer[] nextGames;
 
@@ -14,8 +15,8 @@ public class Game {
 
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("Node{");
-        sb.append("Game=").append(home);
+        final StringBuilder sb = new StringBuilder("Game{");
+        sb.append("home=").append(home);
         sb.append(", away=").append(away);
         sb.append('}');
         return sb.toString();

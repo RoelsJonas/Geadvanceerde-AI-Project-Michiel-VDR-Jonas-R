@@ -21,4 +21,14 @@ public class Umpire {
         }
         return true;
     }
+
+    public int countVisitedLocations() {
+        int count = 0;
+        for (int i=0; i<Main.nTeams; i++) {
+            if (q1TeamCounter[i] >= 0){
+                count++;
+            }
+        }
+        return count;
+    }
 }

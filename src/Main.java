@@ -22,7 +22,10 @@ public class Main {
     public static int[][] dist;
     public static int[][] opponents;
     public static Game[][] games;
-
+    public static Umpire[] umpires;
+    public static int[][] sol_subProblems;
+    public static int[][] lowerbounds;
+    public static String fileName;
     public static void main(String[] args) throws Exception {
 
         // Open the file
@@ -33,68 +36,40 @@ public class Main {
 
         Solution currentSolution = new Solution();
         currentSolution.totalDistance = 0;
-        branchBound(currentSolution, 0, 0);
+
+        calculateLowerBounds();
+        BranchAndBound.branchBound(currentSolution, 0, 0);
 //        System.out.println(best);
     }
 
-    private static void branchBound(Solution currentSolution, int umpire, int round) {
-        // Determine the next umpire and round
-        int nextUmpire = (umpire+1) % nUmps;
-        int nextRound = (nextUmpire == 0) ? round+1 : round;
 
-        // Get an array (sorted by shorted distance) of all feasible next games the current umpire can be assigned to in this round
-        Integer[] feasibleNextGames = getFeasibleAllocations(umpire, round);
-        for(Integer game : feasibleNextGames) {
-            if (game < 0 || currentSolution.roundAlreadyHasGame(round, game)) continue; // Infeasible games get marked with a negative number
-            int cost = currentSolution.calculateDistance(round, umpire, game);
-            if (currentSolution.totalDistance + cost + lowerBound < upperBound) {  // todo: in aparte methode?
-                int homeIndex = games[round][game].home-1;
-                int awayIndex = games[round][game].away-1;
-                currentSolution.addGame(round, umpire, game, cost);
-                int previousQ1 = umpires[umpire].q1TeamCounter[homeIndex];
-                umpires[umpire].q1TeamCounter[homeIndex] = round;
-                int previousQ2Home = umpires[umpire].q2TeamCounter[homeIndex];
-                int previousQ2Away = umpires[umpire].q2TeamCounter[awayIndex];
-                umpires[umpire].q2TeamCounter[homeIndex] = round;
-                umpires[umpire].q2TeamCounter[awayIndex] = round;
 
-                // If there is a next round we recurse else we start the local search algorithm
-                if (nextRound < nRounds) {
-                    branchBound(currentSolution, nextUmpire, nextRound);
-                }
-                else {
-                    // check if all team-venues are visited by every umpire
-                    boolean feasible = true;
-                    for (Umpire u: umpires) if(!u.hasVisitedAllLocations()) {
-                        feasible = false;
-                        break;
-                    }
-                    if(feasible) {
-                        Solution betterSolution = localSearch(currentSolution);
-                        if (upperBound > betterSolution.totalDistance) {
-                            best = betterSolution.toString();
-                            upperBound = betterSolution.totalDistance;
-                            System.out.println("New best solution: " + upperBound);
-                            writeSolution("solutions/sol_" + fileName +"_" + q1 + "_" + q2 + ".txt", betterSolution);
-//                            System.exit(0);
-                        }
-                    }
-                }
-                currentSolution.removeGame(round, umpire, game, cost);
-                umpires[umpire].q1TeamCounter[homeIndex] = previousQ1;
-                umpires[umpire].q2TeamCounter[homeIndex] = previousQ2Home;
-                umpires[umpire].q2TeamCounter[awayIndex] = previousQ2Away;
+    private static void calculateLowerBounds() {
+        sol_subProblems = new int[nRounds][nRounds];
+        lowerbounds = new int[nRounds][nRounds];
+        for(int r=nRounds - 2; r>=0; r--) {
+            sol_subProblems[r][r+1] = HungarianAlgorithm.hungarianAlgo(r);
+            for (int r2=r+1; r2<nRounds; r2++) {
+                lowerbounds[r][r2] = sol_subProblems[r][r+1] + lowerbounds[r+1][r2];
             }
         }
-    }
 
-    private static int[] getFeasibleAllocations() {
-        int[] res = new int[nUmps];
-        return res;
-    }
-
-    private static Solution localSearch(Solution solution) {
-        return solution;
+        for(int k=2; k<nRounds; k++) {
+            int r = nRounds - 1 - k;
+            while (r >= 1) {
+                for (int rr = r+k-2; rr <= r; rr++)
+                    if(sol_subProblems[rr][r+k] == 0) {
+//                        sol_subProblems[rr][r+k] = BranchAndBound.subBranchBound(null, 0, 0);
+                        for(int r1 = rr; r1 > 0; r1--) {
+                            for (int r2 = r+k; r2 < nRounds; r2++) {
+                                lowerbounds[r1][r2] = Math.max(lowerbounds[r1][r2],
+                                        lowerbounds[r1][rr]+sol_subProblems[rr][r+k]+lowerbounds[r+k][r2]);
+                            }
+                        }
+                }
+                r -= k;
+            }
+        }
     }
 
     private static void readInput(String fileName) throws IOException {
@@ -104,6 +79,8 @@ public class Main {
         String line = reader.readLine();
         nTeams = Integer.parseInt(line.split("=")[1].split(";")[0]);
         nUmps = nTeams / 2;
+        umpires = new Umpire[nUmps];
+        for(int u=0; u<nUmps; u++) umpires[u] = new Umpire(u);
         nRounds = 4 * nUmps - 2;
         if(DEBUG) {
             System.out.println("nTeams: " + nTeams);
@@ -182,7 +159,7 @@ public class Main {
         }
     }
 
-    private static void writeSolution(String fileName, Solution sol) {
+    public static void writeSolution(String fileName, Solution sol) {
         try {
             PrintWriter pw = new PrintWriter(fileName);
             pw.print(sol);
@@ -190,6 +167,5 @@ public class Main {
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
-
     }
 }
