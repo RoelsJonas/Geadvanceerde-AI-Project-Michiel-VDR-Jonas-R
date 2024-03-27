@@ -14,7 +14,6 @@ public class Main {
     public static int nRounds;
     public static String best = "No solution found";
     public static int upperBound = Integer.MAX_VALUE;
-    public static int lowerBound = 0;
     public static int q1 = 2;  // umpire not in venue for q1 consecutive rounds
     public static int q2 = 2;  // umpire not for same team in q2 consecutive rounds
 
@@ -145,6 +144,7 @@ public class Main {
             }
         }
     }
+
     private static void processGames() {
         for(int round = 1; round < nRounds; round++) {
             for(int currentGame = 0; currentGame < nUmps; currentGame++) {

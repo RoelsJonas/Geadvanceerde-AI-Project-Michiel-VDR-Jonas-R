@@ -37,6 +37,15 @@ public class Solution {
         totalDistance -= cost;
     }
 
+    public boolean roundAlreadyHasGame(int round, int game) {
+        for (int i=0; i<Main.nUmps; i++) {
+            if(sol[round][i] == game) return true;
+        }
+        return false;
+    }
+
+
+
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
