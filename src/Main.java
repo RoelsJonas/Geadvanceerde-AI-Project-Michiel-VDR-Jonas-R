@@ -5,8 +5,8 @@ import java.util.Comparator;
 public class Main {
     // VALIDATE THE SOLUTION USING  java -jar validator.jar .\\instances\\umps8.txt 2 2 .\\solutions\\sol_umps8_2_2.txt
     // CONSTANTS
-    private static final boolean DEBUG = true;
-    public static final boolean HUNGARIAN_EN = true;
+    public static final boolean DEBUG = true;
+    public static final boolean HUNGARIAN_EN = false;
 
 
     // VARIABLES
@@ -39,6 +39,14 @@ public class Main {
 
         calculateLowerBounds();
 
+        // print the lowerbounds matrix
+        for (int i=0; i<nRounds; i++) {
+            for (int j=0; j<nRounds; j++) {
+                System.out.print(lowerbounds[i][j] + " ");
+            }
+            System.out.println();
+        }
+
         // Fix the first round
         for(int i = 0; i < nUmps; i++) {
             int homeIndex = Main.games[0][i].home-1;
@@ -50,9 +58,10 @@ public class Main {
         }
 
 
-
+        BranchAndBound.startTime = System.currentTimeMillis();
         BranchAndBound.branchBound(currentSolution, 0, 1);
 //        System.out.println(best);
+        System.out.println("Visited Nodes: " + BranchAndBound.nodeCounter);
     }
 
 

@@ -3,15 +3,21 @@ import java.util.Arrays;
 import java.util.Comparator;
 public class BranchAndBound {
     public static int subResult = Integer.MAX_VALUE;
+    public static int nodeCounter = 0;
+    public static long startTime = 0;
 
     public static void branchBound(Solution currentSolution, int umpire, int round) {
+        nodeCounter++;
+        if(Main.DEBUG && nodeCounter % 1000000 == 0) {
+            System.out.println("Nodes per second: " + (nodeCounter / ((double)(System.currentTimeMillis() - startTime) / 1000)) + " Nodes: " + nodeCounter + " Best: " + Main.upperBound);
+        }
         // Determine the next umpire and round
         int nextUmpire = (umpire+1) % Main.nUmps;
         int nextRound = (nextUmpire == 0) ? round+1 : round;
 
         // Get an array (sorted by shorted distance) of all feasible next games the current umpire can be assigned to in this round
-        Integer[] feasibleNextGames = getFeasibleAllocations(umpire, round);
-        for(Integer game : feasibleNextGames) {
+        int[] feasibleNextGames = getFeasibleAllocations(umpire, round);
+        for(int game : feasibleNextGames) {
             if (game < 0 || currentSolution.roundAlreadyHasGame(round, game)) continue; // Infeasible games get marked with a negative number
             int cost = currentSolution.calculateDistance(round, umpire, game);
 
@@ -102,8 +108,8 @@ public class BranchAndBound {
     }
 
     // return all feasible next games
-    public static Integer[] getFeasibleAllocations(int umpire, int round) {
-        Integer[] res = new Integer[Main.nUmps];
+    public static int[] getFeasibleAllocations(int umpire, int round) {
+        int[] res = new int[Main.nUmps];
         for (int g=0; g<Main.nUmps; g++){
             res[g] = g;
             Umpire ump = Main.umpires[umpire];
@@ -117,17 +123,7 @@ public class BranchAndBound {
             }
         }
 
-//        Arrays.sort(res, Comparator.comparingInt((Integer team) -> {
-//            if (team < 0) {
-//                return Integer.MAX_VALUE;
-//            } else {
-//                if (round > 0) {
-//                    return Main.games[round - 1][umpire].distancesToNext[team];
-//                } else {
-//                    return 0;
-//                }
-//            }
-//        }));
+        Arrays.sort(res);
         return res;
     }
 
@@ -137,8 +133,8 @@ public class BranchAndBound {
         int nextRound = (nextUmpire == 0) ? round+1 : round;
 
         // Get an array (sorted by shorted distance) of all feasible next games the current umpire can be assigned to in this round
-        Integer[] feasibleNextGames = getFeasibleAllocations(umpire, round);
-        for(Integer game : feasibleNextGames) {
+        int[] feasibleNextGames = getFeasibleAllocations(umpire, round);
+        for(int game : feasibleNextGames) {
             if (game < 0 || currentSolution.roundAlreadyHasGame(round, game)) continue; // Infeasible games get marked with a negative number
             int cost = currentSolution.calculateDistance(round, umpire, game);
             if (currentSolution.totalDistance + cost + Main.lowerbounds[round+1][endRound-1] < subResult) {  // todo: in aparte methode? is de r+1 correct?
