@@ -64,8 +64,8 @@ public class BranchAndBound {
                 }
             }
 
-            if (currentSolution.totalDistance + cost + ((round < Main.nRounds-1) ?
-                    Main.lowerbounds[round+1][Main.nRounds-1] : 0) + extraUnassignedUmpireCost < Main.upperBound) {  // todo: in aparte methode? is de r+1 correct?
+            if (currentSolution.totalDistance + cost + ((round <= Main.nRounds-1) ?
+                    Main.lowerbounds[round][Main.nRounds-1] : 0) + extraUnassignedUmpireCost < Main.upperBound) {  // todo: in aparte methode? is de r+1 correct?
                 int homeIndex = Main.games[round][game].home-1;
                 int awayIndex = Main.games[round][game].away-1;
                 currentSolution.addGame(round, umpire, game, cost);
