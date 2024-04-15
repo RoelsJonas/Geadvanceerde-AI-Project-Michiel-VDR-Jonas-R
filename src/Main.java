@@ -14,7 +14,7 @@ public class Main {
     public static int nRounds;
     public static String best = "No solution found";
     public static int upperBound = Integer.MAX_VALUE;
-    public static int q1 = 2;  // umpire not in venue for q1 consecutive rounds
+    public static int q1 = 5;  // umpire not in venue for q1 consecutive rounds
     public static int q2 = 2;  // umpire not for same team in q2 consecutive rounds
 
 
@@ -28,7 +28,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
 
         // Open the file
-        fileName = "umps8";
+        fileName = "umps10A";
         readInput("instances/" + fileName + ".txt");
         processGames();
 //        best = new Solution();
@@ -37,7 +37,20 @@ public class Main {
         currentSolution.totalDistance = 0;
 
         calculateLowerBounds();
-        BranchAndBound.branchBound(currentSolution, 0, 0);
+
+        // Fix the first round
+        for(int i = 0; i < nUmps; i++) {
+            int homeIndex = Main.games[0][i].home-1;
+            int awayIndex = Main.games[0][i].away-1;
+            currentSolution.addGame(0, i, i, 0);
+            Main.umpires[i].q1TeamCounter[homeIndex] = 0;
+            Main.umpires[i].q2TeamCounter[homeIndex] = 0;
+            Main.umpires[i].q2TeamCounter[awayIndex] = 0;
+        }
+
+
+
+        BranchAndBound.branchBound(currentSolution, 0, 1);
 //        System.out.println(best);
     }
 
@@ -58,7 +71,8 @@ public class Main {
             while (r >= 1) {
                 for (int rr = r+k-2; rr <= r; rr++)
                     if(sol_subProblems[rr][r+k] == 0) {
-//                        sol_subProblems[rr][r+k] = BranchAndBound.subBranchBound(null, 0, 0);
+                        BranchAndBound.subResult = Integer.MAX_VALUE;
+                        sol_subProblems[rr][r+k] = BranchAndBound.subBranchBound(a_solution, 0, rr, r+k);
                         for(int r1 = rr; r1 > 0; r1--) {
                             for (int r2 = r+k; r2 < nRounds; r2++) {
                                 lowerbounds[r1][r2] = Math.max(lowerbounds[r1][r2],

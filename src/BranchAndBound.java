@@ -1,8 +1,8 @@
 import java.io.*;
 import java.util.Arrays;
 import java.util.Comparator;
-
 public class BranchAndBound {
+    public static int subResult = Integer.MAX_VALUE;
 
     public static void branchBound(Solution currentSolution, int umpire, int round) {
         // Determine the next umpire and round
@@ -17,8 +17,8 @@ public class BranchAndBound {
 
             int extraUnassignedUmpireCost = 0;
 
-            if(round > 0) {
-                int[][] matrix = new int[Main.nUmps - umpire][Main.nUmps - umpire];
+            if(round > 0 && Main.nUmps - umpire-1 > 0) {
+                int[][] matrix = new int[Main.nUmps - umpire - 1][Main.nUmps - umpire - 1];
 
                 int[] fromGames = new int[Main.nUmps];
                 int[] toGames = new int[Main.nUmps];
@@ -112,25 +112,25 @@ public class BranchAndBound {
             boolean condition = ump.q1TeamCounter[home] + Main.q1 > round || ump.q2TeamCounter[home] + Main.q2 > round
                     || ump.q2TeamCounter[away] + Main.q2 > round;
             if (condition){
-                res[g] = Integer.MIN_VALUE;
+                res[g] = -1;
             }
         }
 
-        Arrays.sort(res, Comparator.comparingInt((Integer team) -> {
-            if (team < 0) {
-                return Integer.MAX_VALUE;
-            } else {
-                if (round > 0) {
-                    return Main.games[round - 1][umpire].distancesToNext[team];
-                } else {
-                    return 0;
-                }
-            }
-        }));
+//        Arrays.sort(res, Comparator.comparingInt((Integer team) -> {
+//            if (team < 0) {
+//                return Integer.MAX_VALUE;
+//            } else {
+//                if (round > 0) {
+//                    return Main.games[round - 1][umpire].distancesToNext[team];
+//                } else {
+//                    return 0;
+//                }
+//            }
+//        }));
         return res;
     }
 
-    public static int subBranchBound(Solution currentSolution, int umpire, int round) {
+    public static int subBranchBound(Solution currentSolution, int umpire, int round, int endRound) {
         // Determine the next umpire and round
         int nextUmpire = (umpire+1) % Main.nUmps;
         int nextRound = (nextUmpire == 0) ? round+1 : round;
@@ -140,8 +140,7 @@ public class BranchAndBound {
         for(Integer game : feasibleNextGames) {
             if (game < 0 || currentSolution.roundAlreadyHasGame(round, game)) continue; // Infeasible games get marked with a negative number
             int cost = currentSolution.calculateDistance(round, umpire, game);
-            int extraUnassignedUmpireCost = 0; // TODO IMPLEMENT EXTRA MATHCING PROBLEM
-            if (currentSolution.totalDistance + cost + Main.lowerbounds[round+1][Main.nRounds-1] < Main.upperBound) {  // todo: in aparte methode? is de r+1 correct?
+            if (currentSolution.totalDistance + cost + Main.lowerbounds[round+1][endRound-1] < subResult) {  // todo: in aparte methode? is de r+1 correct?
                 int homeIndex = Main.games[round][game].home-1;
                 int awayIndex = Main.games[round][game].away-1;
                 currentSolution.addGame(round, umpire, game, cost);
@@ -153,35 +152,19 @@ public class BranchAndBound {
                 Main.umpires[umpire].q2TeamCounter[awayIndex] = round;
 
                 // If there is a next round we recurse else we start the local search algorithm
-                if (nextRound < Main.nRounds) {
-                    if(Main.umpires[umpire].countVisitedLocations() + Main.nRounds - round >= Main.nTeams)
-                        branchBound(currentSolution, nextUmpire, nextRound);
-                }
-                else {
-                    // check if all team-venues are visited by every umpire
-                    boolean feasible = true;
-                    for (Umpire u: Main.umpires) if(!u.hasVisitedAllLocations()) {
-                        feasible = false;
-                        break;
-                    }
-                    if(feasible) {
-                        Solution betterSolution = LocalSearch.localSearch(currentSolution);
-                        if (Main.upperBound > betterSolution.totalDistance) {
-                            Main.best = betterSolution.toString();
-                            Main.upperBound = betterSolution.totalDistance;
-                            System.out.println("New best solution: " + Main.upperBound);
-                            Main.writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", betterSolution);
-//                            System.exit(0);
-                        }
-                    }
-                }
+                if (nextRound < endRound)
+                    subBranchBound(currentSolution, nextUmpire, nextRound, endRound);
+
+                else if (subResult > currentSolution.totalDistance)
+                    subResult = currentSolution.totalDistance;
+
                 currentSolution.removeGame(round, umpire, game, cost);
                 Main.umpires[umpire].q1TeamCounter[homeIndex] = previousQ1;
                 Main.umpires[umpire].q2TeamCounter[homeIndex] = previousQ2Home;
                 Main.umpires[umpire].q2TeamCounter[awayIndex] = previousQ2Away;
             }
         }
-        return 0;
+        return subResult;
     }
 
 }

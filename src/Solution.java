@@ -12,7 +12,7 @@ public class Solution {
             for (int j=0; j<Main.nUmps; j++)
                 sol[i][j] = -1;
 
-        totalDistance = Integer.MAX_VALUE;
+        totalDistance = 0;
     }
 
     public int getDistance(int round, int ump) {
@@ -22,7 +22,7 @@ public class Solution {
     }
 
     public int calculateDistance(int round, int ump, int game) {
-        if (round > 0)
+        if (round > 0 && sol[round - 1][ump] != -1)
             return Main.dist[Main.games[round - 1][sol[round - 1][ump]].home - 1][Main.games[round][game].home - 1];
         else return 0;
     }
