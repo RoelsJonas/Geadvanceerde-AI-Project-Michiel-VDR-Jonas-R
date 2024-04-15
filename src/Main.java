@@ -6,6 +6,7 @@ public class Main {
     // VALIDATE THE SOLUTION USING  java -jar validator.jar .\\instances\\umps8.txt 2 2 .\\solutions\\sol_umps8_2_2.txt
     // CONSTANTS
     private static final boolean DEBUG = true;
+    public static final boolean HUNGARIAN_EN = true;
 
 
     // VARIABLES
@@ -65,7 +66,7 @@ public class Main {
                 lowerbounds[r][r2] = sol_subProblems[r][r+1] + lowerbounds[r+1][r2];
             }
         }
-
+        Solution a_solution = new Solution();
         for(int k=2; k<nRounds; k++) {
             int r = nRounds - 1 - k;
             while (r >= 1) {

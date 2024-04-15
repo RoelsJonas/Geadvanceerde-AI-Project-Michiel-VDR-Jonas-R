@@ -53,8 +53,9 @@ public class BranchAndBound {
                         index1++;
                     }
                 }
-                // todo: maak dat dit mogelijk is via boolean aan of af
-                extraUnassignedUmpireCost = HungarianAlgorithm.hungarianAlgo(matrix);
+                if (Main.HUNGARIAN_EN) {
+                    extraUnassignedUmpireCost = HungarianAlgorithm.hungarianAlgo(matrix);
+                }
             }
 
             if (currentSolution.totalDistance + cost + ((round < Main.nRounds-1) ?

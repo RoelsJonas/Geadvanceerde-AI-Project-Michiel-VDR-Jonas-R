@@ -4,7 +4,6 @@ import java.util.Arrays;
 public class Solution {
     public int[][] sol;
     public int totalDistance;
-    public int nAllocatedGames;
 
     public Solution() {
         sol = new int[Main.nRounds][Main.nUmps];
