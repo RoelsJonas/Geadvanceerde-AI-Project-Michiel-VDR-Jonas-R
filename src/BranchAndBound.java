@@ -1,6 +1,3 @@
-import java.io.*;
-import java.util.Arrays;
-import java.util.Comparator;
 public class BranchAndBound {
     public static int subResult = Integer.MAX_VALUE;
     public static int nodeCounter = 0;
@@ -16,14 +13,15 @@ public class BranchAndBound {
         int nextRound = (nextUmpire == 0) ? round+1 : round;
 
         // Get an array (sorted by shorted distance) of all feasible next games the current umpire can be assigned to in this round
-        int[] feasibleNextGames = getFeasibleAllocations(umpire, round);
+        int[] feasibleNextGames = getFeasibleAllocations(umpire, round, currentSolution); // TODO OPTIMIZE
         for(int game : feasibleNextGames) {
-            if (game < 0 || currentSolution.roundAlreadyHasGame(round, game)) continue; // Infeasible games get marked with a negative number
-            int cost = currentSolution.calculateDistance(round, umpire, game);
+            if (game < 0) continue; // Infeasible games get marked with a negative number
+            if(currentSolution.roundAlreadyHasGame(round, game)) continue; // Game cannot already be allocated in current round TODO OPTIMIZE
+            int cost = currentSolution.calculateDistance(round, umpire, game); // TODO OPTIMIZE?
 
+            // Partial matching problem to predict resting count in this round
             int extraUnassignedUmpireCost = 0;
-
-            if(round > 0 && Main.nUmps - umpire-1 > 0) {
+            if(Main.HUNGARIAN_EN && round > 0 && Main.nUmps - umpire - 1 > 0) {
                 int[][] matrix = new int[Main.nUmps - umpire - 1][Main.nUmps - umpire - 1];
 
                 int[] fromGames = new int[Main.nUmps];
@@ -59,13 +57,14 @@ public class BranchAndBound {
                         index1++;
                     }
                 }
-                if (Main.HUNGARIAN_EN) {
-                    extraUnassignedUmpireCost = HungarianAlgorithm.hungarianAlgo(matrix);
-                }
+                extraUnassignedUmpireCost = HungarianAlgorithm.hungarianAlgo(matrix);
             }
 
-            if (currentSolution.totalDistance + cost + ((round <= Main.nRounds-1) ?
-                    Main.lowerbounds[round][Main.nRounds-1] : 0) + extraUnassignedUmpireCost < Main.upperBound) {  // todo: in aparte methode? is de r+1 correct?
+            // check if we can prune this branch
+            if (currentSolution.totalDistance +
+                    cost +
+                    Main.lowerbounds[round][Main.nRounds-1] +
+                    extraUnassignedUmpireCost < Main.upperBound) {
                 int homeIndex = Main.games[round][game].home-1;
                 int awayIndex = Main.games[round][game].away-1;
                 currentSolution.addGame(round, umpire, game, cost);
@@ -94,8 +93,7 @@ public class BranchAndBound {
                             Main.best = betterSolution.toString();
                             Main.upperBound = betterSolution.totalDistance;
                             System.out.println("New best solution: " + Main.upperBound);
-                            Main.writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", betterSolution);
-//                            System.exit(0);
+//                            Main.writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", Main.best);
                         }
                     }
                 }
@@ -108,36 +106,61 @@ public class BranchAndBound {
     }
 
     // return all feasible next games
-    public static int[] getFeasibleAllocations(int umpire, int round) {
+    public static int[] getFeasibleAllocations(int umpire, int round, Solution currentSolution) {
+        if(!Main.SORT_ALLOCATIONS_EN) return getFeasibleSubAllocations(umpire, round, currentSolution);
+        Umpire ump = Main.umpires[umpire];
         int[] res = new int[Main.nUmps];
         for (int g=0; g<Main.nUmps; g++){
-            res[g] = g;
-            Umpire ump = Main.umpires[umpire];
-            int home = Main.games[round][g].home - 1;
-            int away = Main.games[round][g].away - 1;
-            // if the umpire has already been in the same venue for q1 consecutive rounds mark the game as infeasible
-            boolean condition = ump.q1TeamCounter[home] + Main.q1 > round || ump.q2TeamCounter[home] + Main.q2 > round
-                    || ump.q2TeamCounter[away] + Main.q2 > round;
-            if (condition){
+            if(round > 0) res[g] = Main.games[round][currentSolution.sol[round-1][umpire]].nextGames[g];
+            else res[g] = g;
+            int home = Main.games[round][res[g]].home - 1;
+            int away = Main.games[round][res[g]].away - 1;
+
+            // if the umpire has already visited the venue in the last q1 consecutive rounds or already oficiated one of the teams in the last q2 rounds, mark the game as infeasible
+            if (ump.q1TeamCounter[home] + Main.q1 > round
+                    || ump.q2TeamCounter[home] + Main.q2 > round
+                    || ump.q2TeamCounter[away] + Main.q2 > round){
                 res[g] = -1;
             }
         }
 
-        Arrays.sort(res);
+//        Arrays.sort(res);
         return res;
     }
 
-    public static int subBranchBound(Solution currentSolution, int umpire, int round, int endRound) {
+    public static int[] getFeasibleSubAllocations(int umpire, int round, Solution currentSolution) {
+        Umpire ump = Main.umpires[umpire];
+        int[] res = new int[Main.nUmps];
+        for (int g=0; g<Main.nUmps; g++){
+            res[g] = g;
+            int home = Main.games[round][g].home - 1;
+            int away = Main.games[round][g].away - 1;
+
+            // if the umpire has already visited the venue in the last q1 consecutive rounds or already officiated one of the teams in the last q2 rounds, mark the game as infeasible
+            if (ump.q1TeamCounter[home] + Main.q1 > round
+                    || ump.q2TeamCounter[home] + Main.q2 > round
+                    || ump.q2TeamCounter[away] + Main.q2 > round){
+                res[g] = -1;
+            }
+        }
+
+//        Arrays.sort(res);
+        return res;
+    }
+
+    public static int subBranchBound(Solution currentSolution, int umpire, int round, int startRound, int endRound) {
+//        System.out.println(endRound);
         // Determine the next umpire and round
         int nextUmpire = (umpire+1) % Main.nUmps;
         int nextRound = (nextUmpire == 0) ? round+1 : round;
 
         // Get an array (sorted by shorted distance) of all feasible next games the current umpire can be assigned to in this round
-        int[] feasibleNextGames = getFeasibleAllocations(umpire, round);
+        int[] feasibleNextGames = getFeasibleSubAllocations(umpire, round, currentSolution);
         for(int game : feasibleNextGames) {
             if (game < 0 || currentSolution.roundAlreadyHasGame(round, game)) continue; // Infeasible games get marked with a negative number
             int cost = currentSolution.calculateDistance(round, umpire, game);
-            if (currentSolution.totalDistance + cost + Main.lowerbounds[round+1][endRound-1] < subResult) {  // todo: in aparte methode? is de r+1 correct?
+            Main.usedBounds[round][endRound]++;
+            if (currentSolution.totalDistance + cost + Main.lowerbounds[round][endRound] < subResult) {  // todo: in aparte methode? is de r+1 correct?
                 int homeIndex = Main.games[round][game].home-1;
                 int awayIndex = Main.games[round][game].away-1;
                 currentSolution.addGame(round, umpire, game, cost);
@@ -149,8 +172,9 @@ public class BranchAndBound {
                 Main.umpires[umpire].q2TeamCounter[awayIndex] = round;
 
                 // If there is a next round we recurse else we start the local search algorithm
-                if (nextRound < endRound)
-                    subBranchBound(currentSolution, nextUmpire, nextRound, endRound);
+                if (nextRound <= endRound)
+//                    if(Main.umpires[umpire].countVisitedLocations() + Main.nRounds - round + startRound >= Main.nTeams - 1)
+                        subBranchBound(currentSolution, nextUmpire, nextRound, startRound, endRound);
 
                 else if (subResult > currentSolution.totalDistance)
                     subResult = currentSolution.totalDistance;

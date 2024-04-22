@@ -6,9 +6,9 @@ public class Main {
     // VALIDATE THE SOLUTION USING  java -jar validator.jar .\\instances\\umps8.txt 2 2 .\\solutions\\sol_umps8_2_2.txt
     // CONSTANTS
     public static final boolean DEBUG = true;
-    public static final boolean HUNGARIAN_EN = false;
-
-
+    public static final boolean HUNGARIAN_EN = true;
+    public static final boolean SORT_ALLOCATIONS_EN = true;
+    public static final boolean FULL_EXPLORATION_EN = false;
     // VARIABLES
     public static int nTeams;
     public static int nUmps;
@@ -16,33 +16,55 @@ public class Main {
     public static String best = "No solution found";
     public static int upperBound = Integer.MAX_VALUE;
     public static int q1 = 5;  // umpire not in venue for q1 consecutive rounds
-    public static int q2 = 2;  // umpire not for same team in q2 consecutive rounds
-
-
+    public static int q2 = 3;  // umpire not for same team in q2 consecutive rounds
     public static int[][] dist;
     public static int[][] opponents;
     public static Game[][] games;
     public static Umpire[] umpires;
     public static int[][] sol_subProblems;
     public static int[][] lowerbounds;
+    public static int[][] usedBounds;
     public static String fileName;
     public static void main(String[] args) throws Exception {
 
         // Open the file
-        fileName = "umps10A";
+        fileName = "umps14";
         readInput("instances/" + fileName + ".txt");
         processGames();
-//        best = new Solution();
 
         Solution currentSolution = new Solution();
         currentSolution.totalDistance = 0;
 
         calculateLowerBounds();
 
+        // reset counters
+        for(int i = 0; i < nUmps; i++) {
+            for(int j = 0; j < nTeams; j++) {
+                umpires[i].q1TeamCounter[j] = Integer.MIN_VALUE;
+                umpires[i].q2TeamCounter[j] = Integer.MIN_VALUE;
+            }
+        }
+
         // print the lowerbounds matrix
         for (int i=0; i<nRounds; i++) {
             for (int j=0; j<nRounds; j++) {
                 System.out.print(lowerbounds[i][j] + " ");
+            }
+            System.out.println();
+        }
+
+        // print the Subresults matrix
+        for (int i=0; i<nRounds; i++) {
+            for (int j=0; j<nRounds; j++) {
+                System.out.print(sol_subProblems[i][j] + " ");
+            }
+            System.out.println();
+        }
+
+        // print the Usedbounds matrix
+        for (int i=0; i<nRounds; i++) {
+            for (int j=0; j<nRounds; j++) {
+                System.out.print(usedBounds[i][j] + " ");
             }
             System.out.println();
         }
@@ -57,18 +79,18 @@ public class Main {
             Main.umpires[i].q2TeamCounter[awayIndex] = 0;
         }
 
-
         BranchAndBound.startTime = System.currentTimeMillis();
         BranchAndBound.branchBound(currentSolution, 0, 1);
-//        System.out.println(best);
+        writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", best);
+        System.out.println("Best solution: " + upperBound);
+        System.out.println(best);
         System.out.println("Visited Nodes: " + BranchAndBound.nodeCounter);
     }
-
-
 
     private static void calculateLowerBounds() {
         sol_subProblems = new int[nRounds][nRounds];
         lowerbounds = new int[nRounds][nRounds];
+        usedBounds = new int[nRounds][nRounds];
         for(int r=nRounds - 2; r>=0; r--) {
             sol_subProblems[r][r+1] = HungarianAlgorithm.hungarianAlgo(r);
             for (int r2=r+1; r2<nRounds; r2++) {
@@ -78,19 +100,51 @@ public class Main {
         Solution a_solution = new Solution();
         for(int k=2; k<nRounds; k++) {
             int r = nRounds - 1 - k;
-            while (r >= 1) {
-                for (int rr = r+k-2; rr <= r; rr++)
-                    if(sol_subProblems[rr][r+k] == 0) {
+//            System.out.println("====== k: " + k +", r: " + r + " ======");
+            while (r >= 1) {  // >1
+//                System.out.println("rr: " + (r+k-2) + ", r: " + r);
+                for (int rr = r+k-2; rr >= r; rr--) // rr=r+k-1 en rr>r+1 rr--
+                    if(sol_subProblems[rr][r+k] == 0)
+                    {
                         BranchAndBound.subResult = Integer.MAX_VALUE;
-                        sol_subProblems[rr][r+k] = BranchAndBound.subBranchBound(a_solution, 0, rr, r+k);
-                        for(int r1 = rr; r1 > 0; r1--) {
+                        a_solution = new Solution();
+                        // Fix the first round
+                        for(int i = 0; i < nUmps; i++) {
+                            int homeIndex = Main.games[rr][i].home-1;
+                            int awayIndex = Main.games[rr][i].away-1;
+                            a_solution.addGame(rr, i, i, 0);
+                            Main.umpires[i].q1TeamCounter[homeIndex] = rr;
+                            Main.umpires[i].q2TeamCounter[homeIndex] = rr;
+                            Main.umpires[i].q2TeamCounter[awayIndex] = rr;
+                        }
+//                        System.out.println("rr: " + rr + ", r+k:" + (r+k));
+                        sol_subProblems[rr][r+k] = BranchAndBound.subBranchBound(a_solution, 0, rr+1, rr+0, r+k);
+//                        System.out.println("rr: " + rr + ", r: " + r + ", k: " + k + ", sol:" + sol_subProblems[rr][r+k]);
+//                        for (int i=0; i<nRounds; i++) {
+//                            for (int j=0; j<nRounds; j++) {
+//                                System.out.print(sol_subProblems[i][j] + " ");
+//                            }
+//                            System.out.println();
+//                        }
+
+                        // reset counters
+                        for(int i = 0; i < nUmps; i++) {
+                            for(int j = 0; j < nTeams; j++) {
+                                umpires[i].q1TeamCounter[j] = Integer.MIN_VALUE;
+                                umpires[i].q2TeamCounter[j] = Integer.MIN_VALUE;
+                            }
+                        }
+                        for(int r1 = rr; r1 >= 0; r1--) {
                             for (int r2 = r+k; r2 < nRounds; r2++) {
+//                                if(lowerbounds[r1][r2] < lowerbounds[r1][rr]+sol_subProblems[rr][r+k]+lowerbounds[r+k][r2])
+//                                    System.out.println("Better bound found");
                                 lowerbounds[r1][r2] = Math.max(lowerbounds[r1][r2],
                                         lowerbounds[r1][rr]+sol_subProblems[rr][r+k]+lowerbounds[r+k][r2]);
                             }
                         }
                 }
-                r -= k;
+                if(FULL_EXPLORATION_EN) r -= 1;
+                else r -= k;
             }
         }
     }
@@ -183,7 +237,7 @@ public class Main {
         }
     }
 
-    public static void writeSolution(String fileName, Solution sol) {
+    public static void writeSolution(String fileName, String sol) {
         try {
             PrintWriter pw = new PrintWriter(fileName);
             pw.print(sol);

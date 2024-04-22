@@ -31,6 +31,7 @@ public class HungarianAlgorithm {
             totalCost += hardMatrix[res[i][0]][i];
         }
         // Return total minimum cost
+        costMemory.put(key.toString(), totalCost);
         return totalCost;
     }
 
@@ -59,6 +60,7 @@ public class HungarianAlgorithm {
             totalCost += hardMatrix[res[i][0]][i];
         }
         // Return total minimum cost
+        costMemory.put(key.toString(), totalCost);
         return totalCost;
     }
 
