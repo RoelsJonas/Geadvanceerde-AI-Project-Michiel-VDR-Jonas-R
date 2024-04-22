@@ -10,17 +10,20 @@ import java.util.*;
  */
 public class HungarianAlgorithm {
 
-
+    private static final Map<String, Integer> costMemory = new HashMap<>();
     private static int[][] zeroSequence;
 
     public static int hungarianAlgo(int[][] matrix) {
         int[][] hardMatrix = new int[matrix.length][matrix.length];
+        StringBuilder key = new StringBuilder();
         for (int currentG=0; currentG<matrix.length; currentG++) {
             for (int nextG=0; nextG<matrix.length; nextG++) {
-
                 hardMatrix[currentG][nextG] = matrix[currentG][nextG];
+                key.append(matrix[currentG][nextG]);
             }
         }
+
+
 
         int[][] res = computeAssignments(matrix);
 
@@ -38,6 +41,7 @@ public class HungarianAlgorithm {
     public static int hungarianAlgo(int round) {
         int[][] matrix = new int[Main.nUmps][Main.nUmps];
         int[][] hardMatrix = new int[Main.nUmps][Main.nUmps];
+        StringBuilder key = new StringBuilder();
         for (int currentG=0; currentG<Main.nUmps; currentG++) {
             for (int nextG=0; nextG<Main.nUmps; nextG++) {
                 int startLocation = Main.games[round][currentG].home-1;
@@ -48,7 +52,11 @@ public class HungarianAlgorithm {
                 if(notPossible) matrix[currentG][nextG] = 999999999;
                 else matrix[currentG][nextG] = Main.dist[startLocation][endLocation];
                 hardMatrix[currentG][nextG] = matrix[currentG][nextG];
+                key.append(matrix[currentG][nextG]);
             }
+        }
+        if (costMemory.containsKey(key.toString())) {
+            return costMemory.get(key.toString());
         }
 
         int[][] res = computeAssignments(matrix);
