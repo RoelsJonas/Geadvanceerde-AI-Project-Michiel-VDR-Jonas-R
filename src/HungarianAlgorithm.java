@@ -242,7 +242,7 @@ public class HungarianAlgorithm {
      * @return
      */
     private static int[] primeSomeUncoveredZero(int matrix[][], int[] primesByRow,
-                                         int[] coveredRows, int[] coveredCols) {
+                                                int[] coveredRows, int[] coveredCols) {
 
 
         // find an uncovered zero and prime it

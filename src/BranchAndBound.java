@@ -130,7 +130,7 @@ public class BranchAndBound {
             int home = Main.games[round][res[g]].home - 1;
             int away = Main.games[round][res[g]].away - 1;
 
-            // if the umpire has already visited the venue in the last q1 consecutive rounds or already oficiated one of the teams in the last q2 rounds, mark the game as infeasible
+            // if the umpire has already visited the venue in the last q1 consecutive rounds or already officiated one of the teams in the last q2 rounds, mark the game as infeasible
             if (ump.q1TeamCounter[home] + Main.q1 > round
                     || ump.q2TeamCounter[home] + Main.q2 > round
                     || ump.q2TeamCounter[away] + Main.q2 > round){
