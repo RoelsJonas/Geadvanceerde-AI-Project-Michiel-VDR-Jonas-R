@@ -1,11 +1,15 @@
+import java.util.HashMap;
+
 public class BranchAndBound {
     public static int subResult = Integer.MAX_VALUE;
     public static int nodeCounter = 0;
     public static long startTime = 0;
+    public static HashMap<Integer, Long> firstPrunes = new HashMap<>();
+    public static HashMap<Integer, Long> secondPrunes = new HashMap<>();
 
     public static void branchBound(Solution currentSolution, int umpire, int round) {
         nodeCounter++;
-        if(Main.DEBUG && nodeCounter % 1000000 == 0) {
+        if(Main.DEBUG && nodeCounter % 10000000 == 0) {
             System.out.println("Nodes per second: " + (nodeCounter / ((double)(System.currentTimeMillis() - startTime) / 1000)) + " Nodes: " + nodeCounter + " Best: " + Main.upperBound);
         }
         // Determine the next umpire and round
@@ -21,6 +25,14 @@ public class BranchAndBound {
 
             // Partial matching problem to predict resting count in this round
             int extraUnassignedUmpireCost = 0;
+            // TODO CHECK HERE IF WE CAN ALREADY PRUNE
+            if (currentSolution.totalDistance +
+                    cost +
+                    Main.lowerbounds[round][Main.nRounds-1] +
+                    extraUnassignedUmpireCost > Main.upperBound) {
+                firstPrunes.put(round, firstPrunes.getOrDefault(round, 0L) + 1);
+                continue;
+            }
             if(Main.HUNGARIAN_EN && round > 0 && Main.nUmps - umpire - 1 > 0) {
                 int[][] matrix = new int[Main.nUmps - umpire - 1][Main.nUmps - umpire - 1];
 
@@ -64,7 +76,7 @@ public class BranchAndBound {
             if (currentSolution.totalDistance +
                     cost +
                     Main.lowerbounds[round][Main.nRounds-1] +
-                    extraUnassignedUmpireCost < Main.upperBound) {
+                    extraUnassignedUmpireCost <= Main.upperBound) {
                 int homeIndex = Main.games[round][game].home-1;
                 int awayIndex = Main.games[round][game].away-1;
                 currentSolution.addGame(round, umpire, game, cost);
@@ -92,7 +104,7 @@ public class BranchAndBound {
                         if (Main.upperBound > betterSolution.totalDistance) {
                             Main.best = betterSolution.toString();
                             Main.upperBound = betterSolution.totalDistance;
-                            System.out.println("New best solution: " + Main.upperBound);
+//                            System.out.println("New best solution: " + Main.upperBound);
 //                            Main.writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", Main.best);
                         }
                     }
@@ -101,6 +113,8 @@ public class BranchAndBound {
                 Main.umpires[umpire].q1TeamCounter[homeIndex] = previousQ1;
                 Main.umpires[umpire].q2TeamCounter[homeIndex] = previousQ2Home;
                 Main.umpires[umpire].q2TeamCounter[awayIndex] = previousQ2Away;
+            } else {
+                secondPrunes.put(round, secondPrunes.getOrDefault(round, 0L) + 1);
             }
         }
     }

@@ -10,20 +10,23 @@ import java.util.*;
  */
 public class HungarianAlgorithm {
 
-    private static final Map<String, Integer> costMemory = new HashMap<>();
+    public static final Map<Integer, Integer> costMemory = new HashMap<>();
     private static int[][] zeroSequence;
 
     public static int hungarianAlgo(int[][] matrix) {
         int[][] hardMatrix = new int[matrix.length][matrix.length];
-        StringBuilder key = new StringBuilder();
+        int[] flatMatrix = new int[matrix.length*matrix.length];
         for (int currentG=0; currentG<matrix.length; currentG++) {
             for (int nextG=0; nextG<matrix.length; nextG++) {
                 hardMatrix[currentG][nextG] = matrix[currentG][nextG];
-                key.append(matrix[currentG][nextG]);
+                flatMatrix[currentG*matrix.length+nextG] = matrix[currentG][nextG];
             }
         }
 
-
+        int hash = Arrays.hashCode(flatMatrix);
+        if (costMemory.containsKey(hash)) {
+            return costMemory.get(hash);
+        }
 
         int[][] res = computeAssignments(matrix);
 
@@ -33,15 +36,16 @@ public class HungarianAlgorithm {
         for(int i = 0; i < matrix.length; i++) {
             totalCost += hardMatrix[res[i][0]][i];
         }
+
         // Return total minimum cost
-        costMemory.put(key.toString(), totalCost);
+        costMemory.put(hash, totalCost);
         return totalCost;
     }
 
     public static int hungarianAlgo(int round) {
         int[][] matrix = new int[Main.nUmps][Main.nUmps];
         int[][] hardMatrix = new int[Main.nUmps][Main.nUmps];
-        StringBuilder key = new StringBuilder();
+        int[] flatMatrix = new int[Main.nUmps*Main.nUmps];
         for (int currentG=0; currentG<Main.nUmps; currentG++) {
             for (int nextG=0; nextG<Main.nUmps; nextG++) {
                 int startLocation = Main.games[round][currentG].home-1;
@@ -52,12 +56,15 @@ public class HungarianAlgorithm {
                 if(notPossible) matrix[currentG][nextG] = 999999999;
                 else matrix[currentG][nextG] = Main.dist[startLocation][endLocation];
                 hardMatrix[currentG][nextG] = matrix[currentG][nextG];
-                key.append(matrix[currentG][nextG]);
+                flatMatrix[currentG*Main.nUmps+nextG] = matrix[currentG][nextG];
             }
         }
-        if (costMemory.containsKey(key.toString())) {
-            return costMemory.get(key.toString());
+
+        int hash = Arrays.hashCode(flatMatrix);
+        if (costMemory.containsKey(hash)) {
+            return costMemory.get(hash);
         }
+
 
         int[][] res = computeAssignments(matrix);
 
@@ -68,7 +75,7 @@ public class HungarianAlgorithm {
             totalCost += hardMatrix[res[i][0]][i];
         }
         // Return total minimum cost
-        costMemory.put(key.toString(), totalCost);
+        costMemory.put(hash, totalCost);
         return totalCost;
     }
 

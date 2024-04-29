@@ -6,8 +6,8 @@ public class Main {
     // VALIDATE THE SOLUTION USING  java -jar validator.jar .\\instances\\umps8.txt 2 2 .\\solutions\\sol_umps8_2_2.txt
     // CONSTANTS
     public static final boolean DEBUG = true;
-    public static final boolean HUNGARIAN_EN = true;
-    public static final boolean SORT_ALLOCATIONS_EN = true;
+    public static final boolean HUNGARIAN_EN = false;
+    public static final boolean SORT_ALLOCATIONS_EN = false;
     public static final boolean FULL_EXPLORATION_EN = false;
     // VARIABLES
     public static int nTeams;
@@ -15,7 +15,8 @@ public class Main {
     public static int nRounds;
     public static String best = "No solution found";
     public static int upperBound = Integer.MAX_VALUE;
-    public static int q1 = 5;  // umpire not in venue for q1 consecutive rounds
+    public static String fileName = "umps14";
+    public static int q1 = 7;  // umpire not in venue for q1 consecutive rounds
     public static int q2 = 3;  // umpire not for same team in q2 consecutive rounds
     public static int[][] dist;
     public static int[][] opponents;
@@ -24,11 +25,11 @@ public class Main {
     public static int[][] sol_subProblems;
     public static int[][] lowerbounds;
     public static int[][] usedBounds;
-    public static String fileName;
     public static void main(String[] args) throws Exception {
+        BranchAndBound.startTime = System.currentTimeMillis();
 
         // Open the file
-        fileName = "umps14";
+//        fileName = "umps14";
         readInput("instances/" + fileName + ".txt");
         processGames();
 
@@ -79,12 +80,16 @@ public class Main {
             Main.umpires[i].q2TeamCounter[awayIndex] = 0;
         }
 
-        BranchAndBound.startTime = System.currentTimeMillis();
         BranchAndBound.branchBound(currentSolution, 0, 1);
         writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", best);
         System.out.println("Best solution: " + upperBound);
         System.out.println(best);
-        System.out.println("Visited Nodes: " + BranchAndBound.nodeCounter);
+        System.out.println("Visited Nodes: " + BranchAndBound.nodeCounter + ", in: " + (System.currentTimeMillis() - BranchAndBound.startTime) + " ms");
+
+
+        for(Integer r : BranchAndBound.firstPrunes.keySet()) {
+            System.out.println("\t round: " + r + ", prunes: " + BranchAndBound.firstPrunes.get(r) + ", secondary prunes: " + BranchAndBound.secondPrunes.getOrDefault(r, 0L) + ", " + ((double) BranchAndBound.secondPrunes.getOrDefault(r, 0L) / (BranchAndBound.firstPrunes.get(r) + BranchAndBound.secondPrunes.getOrDefault(r, 0L))));
+        }
     }
 
     private static void calculateLowerBounds() {
@@ -195,7 +200,7 @@ public class Main {
         for(int i = 0; i < nRounds; i++) {
             int gameCount = 0;
             line = reader.readLine();
-            line = line.split("\\[\\s{1,}")[1];
+            line = line.split("\\[\\s{0,}")[1];
             line = line.split("]")[0];
             String[] splitString = line.split("\\s{1,}");
             for(int j = 0; j < nTeams; j++) {
