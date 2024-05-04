@@ -33,7 +33,7 @@ public class BranchAndBound {
                 firstPrunes.put(round, firstPrunes.getOrDefault(round, 0L) + 1);
                 continue;
             }
-            if(Main.HUNGARIAN_EN && round > 0 && Main.nUmps - umpire - 1 > 0) {
+            if(Main.PARTIAL_MATCH_EN && round > 0 && Main.nUmps - umpire - 1 > 0) {
                 int[][] matrix = new int[Main.nUmps - umpire - 1][Main.nUmps - umpire - 1];
 
                 int[] fromGames = new int[Main.nUmps];
