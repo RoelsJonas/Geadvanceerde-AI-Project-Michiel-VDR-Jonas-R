@@ -10,52 +10,53 @@ import java.util.*;
  */
 public class HungarianAlgorithm {
 
-    public static final Map<Integer, Integer> hungMemory = new HashMap<>();
-    public static final Map<Integer, Integer> greedyMemory = new HashMap<>();
-    public static final Map<Integer, Integer> partialCount = new HashMap<>();
+//    public static final Map<Integer, Integer> hungMemory = new HashMap<>();
+//    public static final Map<Integer, Integer> greedyMemory = new HashMap<>();
+//    public static final Map<Integer, Integer> partialCount = new HashMap<>();
     private static int[][] zeroSequence;
 
     public static int hungarianAlgo(int[][] matrix) {
         int[][] hardMatrix = new int[matrix.length][matrix.length];
-        int[] flatMatrix = new int[matrix.length*matrix.length];
+//        int[] flatMatrix = new int[matrix.length*matrix.length];
         int sum = 0;
         int min = Integer.MAX_VALUE;
         for (int currentG=0; currentG<matrix.length; currentG++) {
             for (int nextG=0; nextG<matrix.length; nextG++) {
                 if (matrix[currentG][nextG] < min) min = matrix[currentG][nextG];
                 hardMatrix[currentG][nextG] = matrix[currentG][nextG];
-                flatMatrix[currentG*matrix.length+nextG] = matrix[currentG][nextG];
+//                flatMatrix[currentG*matrix.length+nextG] = matrix[currentG][nextG];
             }
             sum += min;
             min = Integer.MAX_VALUE;
         }
+        return sum;
 
-        int hash = Arrays.hashCode(flatMatrix);
-        if (hungMemory.containsKey(hash)) {
-            partialCount.put(hash, partialCount.get(hash)+1);
-            return hungMemory.get(hash);
-        }
-        greedyMemory.put(hash, sum);
-        partialCount.put(hash, 1);
+//        int hash = Arrays.hashCode(flatMatrix);
+//        if (hungMemory.containsKey(hash)) {
+//            partialCount.put(hash, partialCount.get(hash)+1);
+//            return hungMemory.get(hash);
+//        }
+//        greedyMemory.put(hash, sum);
+//        partialCount.put(hash, 1);
 
-        int[][] res = computeAssignments(matrix);
+//        int[][] res = computeAssignments(matrix);
 
-        // Calculate total minimum cost
-        int totalCost = 0;
-
-        for(int i = 0; i < matrix.length; i++) {
-            totalCost += hardMatrix[res[i][0]][i];
-        }
+//         Calculate total minimum cost
+//        int totalCost = 0;
+//
+//        for(int i = 0; i < matrix.length; i++) {
+//            totalCost += hardMatrix[res[i][0]][i];
+//        }
 
         // Return total minimum cost
-        hungMemory.put(hash, totalCost);
-        return totalCost;
+//        hungMemory.put(hash, totalCost);
+//        return totalCost;
     }
 
     public static int hungarianAlgo(int round) {
         int[][] matrix = new int[Main.nUmps][Main.nUmps];
         int[][] hardMatrix = new int[Main.nUmps][Main.nUmps];
-        int[] flatMatrix = new int[Main.nUmps*Main.nUmps];
+//        int[] flatMatrix = new int[Main.nUmps*Main.nUmps];
         int sum = 0;
         int min = Integer.MAX_VALUE;
         for (int currentG=0; currentG<Main.nUmps; currentG++) {
@@ -68,33 +69,34 @@ public class HungarianAlgorithm {
                 if(notPossible) matrix[currentG][nextG] = 999999999;
                 else matrix[currentG][nextG] = Main.dist[startLocation][endLocation];
                 hardMatrix[currentG][nextG] = matrix[currentG][nextG];
-                flatMatrix[currentG*Main.nUmps+nextG] = matrix[currentG][nextG];
+//                flatMatrix[currentG*Main.nUmps+nextG] = matrix[currentG][nextG];
                 if (matrix[currentG][nextG] < min) min = matrix[currentG][nextG];
             }
             sum += min;
             min = Integer.MAX_VALUE;
         }
+        return sum;
 
-        int hash = Arrays.hashCode(flatMatrix);
-        if (hungMemory.containsKey(hash)) {
-            partialCount.put(hash, partialCount.get(hash)+1);
-            return hungMemory.get(hash);
-        }
-        greedyMemory.put(hash, sum);
-        partialCount.put(hash, 1);
+//        int hash = Arrays.hashCode(flatMatrix);
+//        if (hungMemory.containsKey(hash)) {
+//            partialCount.put(hash, partialCount.get(hash)+1);
+//            return hungMemory.get(hash);
+//        }
+//        greedyMemory.put(hash, sum);
+//        partialCount.put(hash, 1);
 
 
-        int[][] res = computeAssignments(matrix);
+//        int[][] res = computeAssignments(matrix);
 
         // Calculate total minimum cost
-        int totalCost = 0;
-
-        for(int i = 0; i < Main.nUmps; i++) {
-            totalCost += hardMatrix[res[i][0]][i];
-        }
+//        int totalCost = 0;
+//
+//        for(int i = 0; i < Main.nUmps; i++) {
+//            totalCost += hardMatrix[res[i][0]][i];
+//        }
         // Return total minimum cost
-        hungMemory.put(hash, totalCost);
-        return totalCost;
+//        hungMemory.put(hash, totalCost);
+//        return totalCost;
     }
 
     // ====================================== YES WE LIKE TO COPY ==========================================
