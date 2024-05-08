@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 
 public class Main {
@@ -7,6 +8,7 @@ public class Main {
     // CONSTANTS
     public static final boolean DEBUG = true;
     public static final boolean PARTIAL_MATCH_EN = true;
+    public static final boolean GREEDY_EN = true;
     public static final boolean HUNGARIAN_EN = false;
     public static final boolean SORT_ALLOCATIONS_EN = false;
     public static final boolean FULL_EXPLORATION_EN = false;
@@ -16,8 +18,8 @@ public class Main {
     public static int nRounds;
     public static String best = "No solution found";
     public static int upperBound = Integer.MAX_VALUE;
-    public static String fileName = "umps12";
-    public static int q1 = 5;  // umpire not in venue for q1 consecutive rounds
+    public static String fileName = "umps14";
+    public static int q1 = 7;  // umpire not in venue for q1 consecutive rounds
     public static int q2 = 3;  // umpire not for same team in q2 consecutive rounds
     public static int[][] dist;
     public static int[][] opponents;
@@ -26,6 +28,7 @@ public class Main {
     public static int[][] sol_subProblems;
     public static int[][] lowerbounds;
     public static int[][] usedBounds;
+    public static int[][] partialBounds;
     public static void main(String[] args) throws Exception {
         BranchAndBound.startTime = System.currentTimeMillis();
 
@@ -36,6 +39,8 @@ public class Main {
 
         Solution currentSolution = new Solution();
         currentSolution.totalDistance = 0;
+
+        calculatePartialBounds();
 
         calculateLowerBounds();
 
@@ -88,31 +93,61 @@ public class Main {
         System.out.println("Visited Nodes: " + BranchAndBound.nodeCounter + ", in: " + (System.currentTimeMillis() - BranchAndBound.startTime) + " ms");
 
 
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Prune_Types/U12_5_3.log"))) {
-            for(Integer r : BranchAndBound.firstPrunes.keySet()) {
-                writer.write("\t round: " + r + ", prunes: " + BranchAndBound.firstPrunes.get(r) + ", secondary prunes: " + BranchAndBound.secondPrunes.getOrDefault(r, 0L) + ", " + ((double) BranchAndBound.secondPrunes.getOrDefault(r, 0L) / (BranchAndBound.firstPrunes.get(r) + BranchAndBound.secondPrunes.getOrDefault(r, 0L)))+"\n");
-            }
-            writer.write("Total: " + HungarianAlgorithm.partialCount.size());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Partial_Counts/U12_5_3.log"))) {
-            for(Integer hashKey: HungarianAlgorithm.partialCount.keySet()) {
-                writer.write(hashKey + " " + HungarianAlgorithm.partialCount.get(hashKey) + "\n");
-            }
-            writer.write("Total: " + HungarianAlgorithm.partialCount.size());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Hung_Greedy_mem/U12_5_3.log"))) {
-            for(Integer hashKey: HungarianAlgorithm.greedyMemory.keySet()) {
-                writer.write(hashKey + " Greedy: " + HungarianAlgorithm.greedyMemory.get(hashKey) + " Hungarian: " + HungarianAlgorithm.hungMemory.get(hashKey) +"\n");
-            }
-            writer.write("Total: " + HungarianAlgorithm.greedyMemory.size());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Prune_Types/U12_5_3.log"))) {
+//            for(Integer r : BranchAndBound.firstPrunes.keySet()) {
+//                writer.write("\t round: " + r + ", prunes: " + BranchAndBound.firstPrunes.get(r) + ", secondary prunes: " + BranchAndBound.secondPrunes.getOrDefault(r, 0L) + ", " + ((double) BranchAndBound.secondPrunes.getOrDefault(r, 0L) / (BranchAndBound.firstPrunes.get(r) + BranchAndBound.secondPrunes.getOrDefault(r, 0L)))+"\n");
+//            }
+//            writer.write("Total: " + HungarianAlgorithm.partialCount.size());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Partial_Counts/U12_5_3.log"))) {
+//            for(Integer hashKey: HungarianAlgorithm.partialCount.keySet()) {
+//                writer.write(hashKey + " " + HungarianAlgorithm.partialCount.get(hashKey) + "\n");
+//            }
+//            writer.write("Total: " + HungarianAlgorithm.partialCount.size());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Hung_Greedy_mem/U12_5_3.log"))) {
+//            for(Integer hashKey: HungarianAlgorithm.greedyMemory.keySet()) {
+//                writer.write(hashKey + " Greedy: " + HungarianAlgorithm.greedyMemory.get(hashKey) + " Hungarian: " + HungarianAlgorithm.hungMemory.get(hashKey) +"\n");
+//            }
+//            writer.write("Total: " + HungarianAlgorithm.greedyMemory.size());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 }
+    private static void calculatePartialBounds() {
+        partialBounds = new int[nRounds][nUmps];
+        int[] mins = new int[nUmps];
+        int min = Integer.MAX_VALUE;
+        for(int round = 1; round < nRounds; round++) {
+            for(int i = 0; i < nUmps; i++) {
+                int[] distances = games[round][i].distancesToNext;
+                int val = Integer.MAX_VALUE;
+                for(int j = 0; j < nUmps; j++) {
+                    if(distances[j] == 0) continue;
+                    val = Math.min(val, distances[j]);
+                }
+                if(val < min) min = val;
+                mins[i] = val;
+            }
+            Arrays.sort(mins);
+            for(int i = 1; i < nUmps; i++) {
+                partialBounds[round][i] = partialBounds[round][i-1] + mins[i];
+            }
+        }
+        if(DEBUG) {
+            System.out.println("============== Partial Bounds ==============");
+            for(int i = 0; i < nRounds; i++) {
+                for(int j = 0; j < nUmps; j++) {
+                    System.out.printf("%d,", partialBounds[i][j]);
+                }
+                System.out.println();
+            }
+        }
+    }
 
     private static void calculateLowerBounds() {
         sol_subProblems = new int[nRounds][nRounds];

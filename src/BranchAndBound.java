@@ -8,6 +8,7 @@ public class BranchAndBound {
     public static HashMap<Integer, Long> secondPrunes = new HashMap<>();
 
     public static void branchBound(Solution currentSolution, int umpire, int round) {
+//        if(System.currentTimeMillis() - startTime > 300000) return;
         nodeCounter++;
         if(Main.DEBUG && nodeCounter % 10000000 == 0) {
             System.out.println("Nodes per second: " + (nodeCounter / ((double)(System.currentTimeMillis() - startTime) / 1000)) + " Nodes: " + nodeCounter + " Best: " + Main.upperBound);
@@ -34,42 +35,50 @@ public class BranchAndBound {
                 continue;
             }
             if(Main.PARTIAL_MATCH_EN && round > 0 && Main.nUmps - umpire - 1 > 0) {
-                int[][] matrix = new int[Main.nUmps - umpire - 1][Main.nUmps - umpire - 1];
 
-                int[] fromGames = new int[Main.nUmps];
-                int[] toGames = new int[Main.nUmps];
-
-                for (int i = 0; i < Main.nUmps; i++) {
-                    if (!currentSolution.roundAlreadyHasGame(round, i) && i != game) toGames[i] = i;
-                    else toGames[i] = -1;
-                    fromGames[i] = i;
+                if(Main.GREEDY_EN) {
+                    extraUnassignedUmpireCost = Main.partialBounds[round][Main.nUmps - umpire -1];
                 }
+                else {
 
-                for (int i = 0; i < umpire + 1; i++) {
-                    fromGames[currentSolution.sol[round - 1][i]] = -1;
-                }
 
-                int index1 = 0;
-                int index2 = 0;
-                for (int i = 0; i < Main.nUmps; i++) {
-                    if (fromGames[i] != -1) {
-                        index2 = 0;
-                        for (int j = 0; j < Main.nUmps; j++) {
-                            if (toGames[j] != -1) {
-                                int startLocation = Main.games[round - 1][fromGames[i]].home - 1;
-                                int startAway = Main.games[round - 1][fromGames[i]].away-1;
-                                int endLocation = Main.games[round][toGames[j]].home-1;
-                                int endAway = Main.games[round][toGames[j]].away-1;
-                                boolean notPossible = (endLocation == startLocation && Main.q1 > 0) || (Main.q2 > 0 && (endLocation == startAway || endAway == startLocation || endAway == startAway));
-                                if(notPossible) matrix[index1][index2] = 999999999;
-                                else matrix[index1][index2] = Main.dist[startLocation][endLocation];
-                                index2++;
-                            }
-                        }
-                        index1++;
+                    int[][] matrix = new int[Main.nUmps - umpire - 1][Main.nUmps - umpire - 1];
+
+                    int[] fromGames = new int[Main.nUmps];
+                    int[] toGames = new int[Main.nUmps];
+
+                    for (int i = 0; i < Main.nUmps; i++) {
+                        if (!currentSolution.roundAlreadyHasGame(round, i) && i != game) toGames[i] = i;
+                        else toGames[i] = -1;
+                        fromGames[i] = i;
                     }
+
+                    for (int i = 0; i < umpire + 1; i++) {
+                        fromGames[currentSolution.sol[round - 1][i]] = -1;
+                    }
+
+                    int index1 = 0;
+                    int index2 = 0;
+                    for (int i = 0; i < Main.nUmps; i++) {
+                        if (fromGames[i] != -1) {
+                            index2 = 0;
+                            for (int j = 0; j < Main.nUmps; j++) {
+                                if (toGames[j] != -1) {
+                                    int startLocation = Main.games[round - 1][fromGames[i]].home - 1;
+                                    int startAway = Main.games[round - 1][fromGames[i]].away - 1;
+                                    int endLocation = Main.games[round][toGames[j]].home - 1;
+                                    int endAway = Main.games[round][toGames[j]].away - 1;
+                                    boolean notPossible = (endLocation == startLocation && Main.q1 > 0) || (Main.q2 > 0 && (endLocation == startAway || endAway == startLocation || endAway == startAway));
+                                    if (notPossible) matrix[index1][index2] = 999999999;
+                                    else matrix[index1][index2] = Main.dist[startLocation][endLocation];
+                                    index2++;
+                                }
+                            }
+                            index1++;
+                        }
+                    }
+                    extraUnassignedUmpireCost = HungarianAlgorithm.hungarianAlgo(matrix);
                 }
-                extraUnassignedUmpireCost = HungarianAlgorithm.hungarianAlgo(matrix);
             }
 
             // check if we can prune this branch
@@ -174,7 +183,9 @@ public class BranchAndBound {
             if (game < 0 || currentSolution.roundAlreadyHasGame(round, game)) continue; // Infeasible games get marked with a negative number
             int cost = currentSolution.calculateDistance(round, umpire, game);
             Main.usedBounds[round][endRound]++;
-            if (currentSolution.totalDistance + cost + Main.lowerbounds[round][endRound] < subResult) {  // todo: in aparte methode? is de r+1 correct?
+            int extraUnassignedUmpireCost = 0;
+            if(round > 0 && Main.nUmps - umpire - 1 > 0) extraUnassignedUmpireCost = Main.partialBounds[round][Main.nUmps - umpire -1];
+            if (currentSolution.totalDistance + cost + Main.lowerbounds[round][endRound] + extraUnassignedUmpireCost < subResult) {  // todo: in aparte methode? is de r+1 correct?
                 int homeIndex = Main.games[round][game].home-1;
                 int awayIndex = Main.games[round][game].away-1;
                 currentSolution.addGame(round, umpire, game, cost);
