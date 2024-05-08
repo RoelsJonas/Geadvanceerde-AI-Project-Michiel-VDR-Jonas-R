@@ -2,6 +2,7 @@ import java.io.*;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.concurrent.*;
 
 public class Main {
     // VALIDATE THE SOLUTION USING  java -jar validator.jar .\\instances\\umps8.txt 2 2 .\\solutions\\sol_umps8_2_2.txt
@@ -12,6 +13,7 @@ public class Main {
     public static final boolean HUNGARIAN_EN = false;
     public static final boolean SORT_ALLOCATIONS_EN = false;
     public static final boolean FULL_EXPLORATION_EN = false;
+    public static final boolean WRITE_LOGS = true;
     // VARIABLES
     public static int nTeams;
     public static int nUmps;
@@ -43,38 +45,24 @@ public class Main {
         calculatePartialBounds();
 
         calculateLowerBounds();
+        ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        Future<?> future = executor.submit(() -> calculateLowerBounds());
+        try {
+            Thread.sleep(500); // Sleep for 10 seconds (10,000 milliseconds)
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        //calculateLowerBounds();
 
         // reset counters
-        for(int i = 0; i < nUmps; i++) {
-            for(int j = 0; j < nTeams; j++) {
-                umpires[i].q1TeamCounter[j] = Integer.MIN_VALUE;
-                umpires[i].q2TeamCounter[j] = Integer.MIN_VALUE;
-            }
-        }
+//        for(int i = 0; i < nUmps; i++) {
+//            for(int j = 0; j < nTeams; j++) {
+//                umpires[i].q1TeamCounter[j] = Integer.MIN_VALUE;
+//                umpires[i].q2TeamCounter[j] = Integer.MIN_VALUE;
+//            }
+//        }
 
-        // print the lowerbounds matrix
-        for (int i=0; i<nRounds; i++) {
-            for (int j=0; j<nRounds; j++) {
-                System.out.print(lowerbounds[i][j] + " ");
-            }
-            System.out.println();
-        }
 
-        // print the Subresults matrix
-        for (int i=0; i<nRounds; i++) {
-            for (int j=0; j<nRounds; j++) {
-                System.out.print(sol_subProblems[i][j] + " ");
-            }
-            System.out.println();
-        }
-
-        // print the Usedbounds matrix
-        for (int i=0; i<nRounds; i++) {
-            for (int j=0; j<nRounds; j++) {
-                System.out.print(usedBounds[i][j] + " ");
-            }
-            System.out.println();
-        }
 
         // Fix the first round
         for(int i = 0; i < nUmps; i++) {
@@ -87,11 +75,71 @@ public class Main {
         }
 
         BranchAndBound.branchBound(currentSolution, 0, 1);
+        try {
+            future.get(); // This will block until the calculation is complete
+            if (DEBUG){
+                 //print the lowerbounds matrix
+                for (int i=0; i<nRounds; i++) {
+                    for (int j=0; j<nRounds; j++) {
+                        System.out.print(lowerbounds[i][j] + " ");
+                    }
+                    System.out.println();
+                }
+                // print the Subresults matrix
+                for (int i=0; i<nRounds; i++) {
+                    for (int j=0; j<nRounds; j++) {
+                        System.out.print(sol_subProblems[i][j] + " ");
+                    }
+                    System.out.println();
+                }
+                // print the Usedbounds matrix
+                for (int i=0; i<nRounds; i++) {
+                    for (int j=0; j<nRounds; j++) {
+                        System.out.print(usedBounds[i][j] + " ");
+                    }
+                    System.out.println();
+                }
+            }
+
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        executor.shutdown();
+
+
         writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", best);
         System.out.println("Best solution: " + upperBound);
         System.out.println(best);
         System.out.println("Visited Nodes: " + BranchAndBound.nodeCounter + ", in: " + (System.currentTimeMillis() - BranchAndBound.startTime) + " ms");
 
+//        if (WRITE_LOGS) {
+//            try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Prune_Types/U14_7_2.log"))) {
+//                for(Integer r : BranchAndBound.firstPrunes.keySet()) {
+//                    writer.write("\t round: " + r + ", prunes: " + BranchAndBound.firstPrunes.get(r) + ", secondary prunes: " + BranchAndBound.secondPrunes.getOrDefault(r, 0L) + ", " + ((double) BranchAndBound.secondPrunes.getOrDefault(r, 0L) / (BranchAndBound.firstPrunes.get(r) + BranchAndBound.secondPrunes.getOrDefault(r, 0L)))+"\n");
+//                }
+//                writer.write("Total: " + HungarianAlgorithm.partialCount.size());
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Partial_Counts/U14_7_2.log"))) {
+//                for(Integer hashKey: HungarianAlgorithm.partialCount.keySet()) {
+//                    writer.write(hashKey + " " + HungarianAlgorithm.partialCount.get(hashKey) + "\n");
+//                }
+//                writer.write("Total: " + HungarianAlgorithm.partialCount.size());
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Hung_Greedy_mem/U14_7_2.log"))) {
+//                for(Integer hashKey: HungarianAlgorithm.greedyMemory.keySet()) {
+//                    writer.write(hashKey + " Greedy: " + HungarianAlgorithm.greedyMemory.get(hashKey) + " Hungarian: " + HungarianAlgorithm.hungMemory.get(hashKey) +"\n");
+//                }
+//                writer.write("Total: " + HungarianAlgorithm.greedyMemory.size());
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//
+//        }
+}
 
 //        try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Prune_Types/U12_5_3.log"))) {
 //            for(Integer r : BranchAndBound.firstPrunes.keySet()) {
@@ -175,9 +223,9 @@ public class Main {
                             int homeIndex = Main.games[rr][i].home-1;
                             int awayIndex = Main.games[rr][i].away-1;
                             a_solution.addGame(rr, i, i, 0);
-                            Main.umpires[i].q1TeamCounter[homeIndex] = rr;
-                            Main.umpires[i].q2TeamCounter[homeIndex] = rr;
-                            Main.umpires[i].q2TeamCounter[awayIndex] = rr;
+                            Main.umpires[i].q1TeamCounterLB[homeIndex] = rr;
+                            Main.umpires[i].q2TeamCounterLB[homeIndex] = rr;
+                            Main.umpires[i].q2TeamCounterLB[awayIndex] = rr;
                         }
 //                        System.out.println("rr: " + rr + ", r+k:" + (r+k));
                         sol_subProblems[rr][r+k] = BranchAndBound.subBranchBound(a_solution, 0, rr+1, rr+0, r+k);
@@ -192,8 +240,8 @@ public class Main {
                         // reset counters
                         for(int i = 0; i < nUmps; i++) {
                             for(int j = 0; j < nTeams; j++) {
-                                umpires[i].q1TeamCounter[j] = Integer.MIN_VALUE;
-                                umpires[i].q2TeamCounter[j] = Integer.MIN_VALUE;
+                                umpires[i].q1TeamCounterLB[j] = Integer.MIN_VALUE;
+                                umpires[i].q2TeamCounterLB[j] = Integer.MIN_VALUE;
                             }
                         }
                         for(int r1 = rr; r1 >= 0; r1--) {
@@ -209,6 +257,7 @@ public class Main {
                 else r -= k;
             }
         }
+        System.out.println("Lower bounds calculated");
     }
 
     private static void readInput(String fileName) throws IOException {
