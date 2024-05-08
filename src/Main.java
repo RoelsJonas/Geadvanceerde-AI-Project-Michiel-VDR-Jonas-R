@@ -44,7 +44,7 @@ public class Main {
 
         calculatePartialBounds();
 
-        calculateLowerBounds();
+//        calculateLowerBounds();
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         Future<?> future = executor.submit(() -> calculateLowerBounds());
         try {
@@ -112,59 +112,6 @@ public class Main {
         System.out.println(best);
         System.out.println("Visited Nodes: " + BranchAndBound.nodeCounter + ", in: " + (System.currentTimeMillis() - BranchAndBound.startTime) + " ms");
 
-//        if (WRITE_LOGS) {
-//            try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Prune_Types/U14_7_2.log"))) {
-//                for(Integer r : BranchAndBound.firstPrunes.keySet()) {
-//                    writer.write("\t round: " + r + ", prunes: " + BranchAndBound.firstPrunes.get(r) + ", secondary prunes: " + BranchAndBound.secondPrunes.getOrDefault(r, 0L) + ", " + ((double) BranchAndBound.secondPrunes.getOrDefault(r, 0L) / (BranchAndBound.firstPrunes.get(r) + BranchAndBound.secondPrunes.getOrDefault(r, 0L)))+"\n");
-//                }
-//                writer.write("Total: " + HungarianAlgorithm.partialCount.size());
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Partial_Counts/U14_7_2.log"))) {
-//                for(Integer hashKey: HungarianAlgorithm.partialCount.keySet()) {
-//                    writer.write(hashKey + " " + HungarianAlgorithm.partialCount.get(hashKey) + "\n");
-//                }
-//                writer.write("Total: " + HungarianAlgorithm.partialCount.size());
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Hung_Greedy_mem/U14_7_2.log"))) {
-//                for(Integer hashKey: HungarianAlgorithm.greedyMemory.keySet()) {
-//                    writer.write(hashKey + " Greedy: " + HungarianAlgorithm.greedyMemory.get(hashKey) + " Hungarian: " + HungarianAlgorithm.hungMemory.get(hashKey) +"\n");
-//                }
-//                writer.write("Total: " + HungarianAlgorithm.greedyMemory.size());
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//
-//        }
-}
-
-//        try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Prune_Types/U12_5_3.log"))) {
-//            for(Integer r : BranchAndBound.firstPrunes.keySet()) {
-//                writer.write("\t round: " + r + ", prunes: " + BranchAndBound.firstPrunes.get(r) + ", secondary prunes: " + BranchAndBound.secondPrunes.getOrDefault(r, 0L) + ", " + ((double) BranchAndBound.secondPrunes.getOrDefault(r, 0L) / (BranchAndBound.firstPrunes.get(r) + BranchAndBound.secondPrunes.getOrDefault(r, 0L)))+"\n");
-//            }
-//            writer.write("Total: " + HungarianAlgorithm.partialCount.size());
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//        try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Partial_Counts/U12_5_3.log"))) {
-//            for(Integer hashKey: HungarianAlgorithm.partialCount.keySet()) {
-//                writer.write(hashKey + " " + HungarianAlgorithm.partialCount.get(hashKey) + "\n");
-//            }
-//            writer.write("Total: " + HungarianAlgorithm.partialCount.size());
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//        try (BufferedWriter writer = new BufferedWriter(new FileWriter("analysis/Hung_Greedy_mem/U12_5_3.log"))) {
-//            for(Integer hashKey: HungarianAlgorithm.greedyMemory.keySet()) {
-//                writer.write(hashKey + " Greedy: " + HungarianAlgorithm.greedyMemory.get(hashKey) + " Hungarian: " + HungarianAlgorithm.hungMemory.get(hashKey) +"\n");
-//            }
-//            writer.write("Total: " + HungarianAlgorithm.greedyMemory.size());
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
 }
     private static void calculatePartialBounds() {
         partialBounds = new int[nRounds][nUmps];
@@ -197,6 +144,7 @@ public class Main {
         }
     }
 
+    // TODO IMPLEMENT INTERMEDIARY BOUNDS PROPAGATION
     private static void calculateLowerBounds() {
         sol_subProblems = new int[nRounds][nRounds];
         lowerbounds = new int[nRounds][nRounds];
