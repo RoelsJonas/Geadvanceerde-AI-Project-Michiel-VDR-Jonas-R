@@ -3,12 +3,14 @@ public class Game {
     public int away;
     public int ump; // TODO UMPIRE TOEWIJZEN
     public int[] distancesToNext;
+    public int[] distancesToNextHard;
     public Integer[] nextGames;
 
     public Game(int home, int away) {
         this.home = home;
         this.away = away;
         this.distancesToNext = new int[Main.nUmps];
+        this.distancesToNextHard = new int[Main.nUmps];
         this.nextGames = new Integer[Main.nUmps];
         for(int i = 0; i < Main.nUmps; i++) nextGames[i] = i;
     }

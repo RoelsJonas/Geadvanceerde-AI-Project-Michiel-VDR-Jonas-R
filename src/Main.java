@@ -1,6 +1,5 @@
 import java.io.*;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.*;
 
@@ -11,7 +10,8 @@ public class Main {
     public static final boolean PARTIAL_MATCH_EN = true;
     public static final boolean GREEDY_EN = true;
     public static final boolean HUNGARIAN_EN = false;
-    public static final boolean SORT_ALLOCATIONS_EN = false;
+    public static final boolean SORT_ALLOCATIONS_EN = true;
+    public static final boolean INTERMEDIARY_BOUNDS_EN = true;
     public static final boolean FULL_EXPLORATION_EN = false;
     public static final boolean WRITE_LOGS = true;
     // VARIABLES
@@ -21,14 +21,14 @@ public class Main {
     public static String best = "No solution found";
     public static int upperBound = Integer.MAX_VALUE;
     public static String fileName = "umps14";
-    public static int q1 = 7;  // umpire not in venue for q1 consecutive rounds
+    public static int q1 = 8;  // umpire not in venue for q1 consecutive rounds
     public static int q2 = 3;  // umpire not for same team in q2 consecutive rounds
     public static int[][] dist;
     public static int[][] opponents;
     public static Game[][] games;
     public static Umpire[] umpires;
     public static int[][] sol_subProblems;
-    public static int[][] lowerbounds;
+    public static int[][] lowerBounds;
     public static int[][] usedBounds;
     public static int[][] partialBounds;
     public static void main(String[] args) throws Exception {
@@ -43,15 +43,18 @@ public class Main {
         currentSolution.totalDistance = 0;
 
         calculatePartialBounds();
+        sol_subProblems = new int[nRounds][nRounds];
+        lowerBounds = new int[nRounds][nRounds];
+        usedBounds = new int[nRounds][nRounds];
 
 //        calculateLowerBounds();
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         Future<?> future = executor.submit(() -> calculateLowerBounds());
-        try {
-            Thread.sleep(500); // Sleep for 10 seconds (10,000 milliseconds)
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            Thread.sleep(500); // Sleep for 10 seconds (10,000 milliseconds)
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
         //calculateLowerBounds();
 
         // reset counters
@@ -81,7 +84,7 @@ public class Main {
                  //print the lowerbounds matrix
                 for (int i=0; i<nRounds; i++) {
                     for (int j=0; j<nRounds; j++) {
-                        System.out.print(lowerbounds[i][j] + " ");
+                        System.out.print(lowerBounds[i][j] + " ");
                     }
                     System.out.println();
                 }
@@ -114,10 +117,11 @@ public class Main {
 
 }
     private static void calculatePartialBounds() {
+        System.out.println("============== Partial Bounds ==============");
         partialBounds = new int[nRounds][nUmps];
         int[] mins = new int[nUmps];
         int min = Integer.MAX_VALUE;
-        for(int round = 1; round < nRounds; round++) {
+        for(int round = 1; round < nRounds-1; round++) {
             for(int i = 0; i < nUmps; i++) {
                 int[] distances = games[round][i].distancesToNext;
                 int val = Integer.MAX_VALUE;
@@ -132,31 +136,69 @@ public class Main {
             for(int i = 1; i < nUmps; i++) {
                 partialBounds[round][i] = partialBounds[round][i-1] + mins[i];
             }
-        }
-        if(DEBUG) {
-            System.out.println("============== Partial Bounds ==============");
-            for(int i = 0; i < nRounds; i++) {
-                for(int j = 0; j < nUmps; j++) {
-                    System.out.printf("%d,", partialBounds[i][j]);
-                }
-                System.out.println();
+            System.out.printf("Round %d: ", round);
+            for(int j = 0; j < nUmps; j++) {
+                System.out.printf("%d,", partialBounds[round][j]);
             }
+            System.out.println();
+
+
+            int[][] matrix = new int[nUmps][nUmps];
+            for(int i = 0; i < nUmps; i++) {
+                for(int j = 0; j < nUmps; j++) {
+                    int distance = games[round][i].distancesToNextHard[j];
+                    if(distance <= 0)
+                        matrix[i][j] = 999999;
+                    else matrix[i][j] = distance;
+                }
+            }
+
+            int[] res = HungarianAlgorithm.hungarianAlgoPartial(matrix);
+            Arrays.sort(res);
+            for(int i = 1; i < nUmps; i++) {
+                partialBounds[round][i] = partialBounds[round][i-1] + res[i];
+            }
+            System.out.printf("Round %d: ", round);
+            for(int j = 0; j < nUmps; j++) {
+                System.out.printf("%d,", partialBounds[round][j]);
+            }
+            System.out.println();
+
         }
+//        if(DEBUG) {
+//            System.out.println("============== Partial Bounds ==============");
+//            for(int i = 0; i < nRounds; i++) {
+//                for(int j = 0; j < nUmps; j++) {
+//                    System.out.printf("%d,", partialBounds[i][j]);
+//                }
+//                System.out.println();
+//            }
+//        }
     }
 
     // TODO IMPLEMENT INTERMEDIARY BOUNDS PROPAGATION
     private static void calculateLowerBounds() {
-        sol_subProblems = new int[nRounds][nRounds];
-        lowerbounds = new int[nRounds][nRounds];
-        usedBounds = new int[nRounds][nRounds];
         for(int r=nRounds - 2; r>=0; r--) {
             sol_subProblems[r][r+1] = HungarianAlgorithm.hungarianAlgo(r);
             for (int r2=r+1; r2<nRounds; r2++) {
-                lowerbounds[r][r2] = sol_subProblems[r][r+1] + lowerbounds[r+1][r2];
+                lowerBounds[r][r2] = sol_subProblems[r][r+1] + lowerBounds[r+1][r2];
             }
         }
         Solution a_solution = new Solution();
         for(int k=2; k<nRounds; k++) {
+
+            // propagate bounds upwards
+            if(INTERMEDIARY_BOUNDS_EN) {
+//                System.out.println("Propagating: " + k);
+                for(int i = nRounds - 2; i >= 0; i--) for(int j = nRounds - 1; j >= 0; j--) {
+                    lowerBounds[i][j] = Math.max(lowerBounds[i][j], lowerBounds[i+1][j]);
+                }
+//                for(int i = nRounds - 2; i >= 0; i--) {
+////                    System.out.println("Propagating: " + k);
+//                    lowerBounds[i][nRounds-1] = Math.max(lowerBounds[i][nRounds-1], lowerBounds[i+1][nRounds-1]);
+//                }
+            }
+//            System.out.println("Done propagating");
             int r = nRounds - 1 - k;
 //            System.out.println("====== k: " + k +", r: " + r + " ======");
             while (r >= 1) {  // >1
@@ -196,8 +238,8 @@ public class Main {
                             for (int r2 = r+k; r2 < nRounds; r2++) {
 //                                if(lowerbounds[r1][r2] < lowerbounds[r1][rr]+sol_subProblems[rr][r+k]+lowerbounds[r+k][r2])
 //                                    System.out.println("Better bound found");
-                                lowerbounds[r1][r2] = Math.max(lowerbounds[r1][r2],
-                                        lowerbounds[r1][rr]+sol_subProblems[rr][r+k]+lowerbounds[r+k][r2]);
+                                lowerBounds[r1][r2] = Math.max(lowerBounds[r1][r2],
+                                        lowerBounds[r1][rr]+sol_subProblems[rr][r+k]+ lowerBounds[r+k][r2]);
                             }
                         }
                 }
@@ -287,11 +329,18 @@ public class Main {
             for(int currentGame = 0; currentGame < nUmps; currentGame++) {
                 for(int nextGame = 0; nextGame < nUmps; nextGame++) {
                     games[round - 1][currentGame].distancesToNext[nextGame] = dist[games[round - 1] [currentGame].home-1][games[round][nextGame].home-1];
+                    games[round - 1][currentGame].distancesToNextHard[nextGame] = dist[games[round - 1] [currentGame].home-1][games[round][nextGame].home-1];
                 }
 
                 int finalRound = round;
                 int finalCurrentGame = currentGame;
                 Arrays.sort(games[round-1][currentGame].nextGames, Comparator.comparingInt((Integer game) -> games[finalRound - 1][finalCurrentGame].distancesToNext[game]));
+                System.out.print("Distances: ");
+                for(int i = 0 ; i < games[round-1][currentGame].nextGames.length; i++) {
+                    System.out.printf("%d, ", games[finalRound - 1][finalCurrentGame].distancesToNext[games[round-1][currentGame].nextGames[i]]);
+                }
+                System.out.println();
+
             }
         }
     }

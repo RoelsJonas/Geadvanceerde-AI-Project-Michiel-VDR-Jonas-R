@@ -26,14 +26,14 @@ public class BranchAndBound {
 
             // Partial matching problem to predict resting count in this round
             int extraUnassignedUmpireCost = 0;
-            // TODO CHECK HERE IF WE CAN ALREADY PRUNE
-            if (currentSolution.totalDistance +
-                    cost +
-                    Main.lowerbounds[round][Main.nRounds-1] +
-                    extraUnassignedUmpireCost > Main.upperBound) {
-                firstPrunes.put(round, firstPrunes.getOrDefault(round, 0L) + 1);
-                continue;
-            }
+//            // TODO CHECK HERE IF WE CAN ALREADY PRUNE
+//            if (currentSolution.totalDistance +
+//                    cost +
+//                    Main.lowerbounds[round][Main.nRounds-1] +
+//                    extraUnassignedUmpireCost > Main.upperBound) {
+//                firstPrunes.put(round, firstPrunes.getOrDefault(round, 0L) + 1);
+//                continue;
+//            }
             if(Main.PARTIAL_MATCH_EN && round > 0 && Main.nUmps - umpire - 1 > 0) {
 
                 if(Main.GREEDY_EN) {
@@ -84,7 +84,7 @@ public class BranchAndBound {
             // check if we can prune this branch
             if (currentSolution.totalDistance +
                     cost +
-                    Main.lowerbounds[round][Main.nRounds-1] +
+                    Main.lowerBounds[round][Main.nRounds-1] +
                     extraUnassignedUmpireCost <= Main.upperBound) {
                 int homeIndex = Main.games[round][game].home-1;
                 int awayIndex = Main.games[round][game].away-1;
@@ -134,7 +134,8 @@ public class BranchAndBound {
         Umpire ump = Main.umpires[umpire];
         int[] res = new int[Main.nUmps];
         for (int g=0; g<Main.nUmps; g++){
-            if(round > 0) res[g] = Main.games[round][currentSolution.sol[round-1][umpire]].nextGames[g];
+            // TODO ROUND-1 of niet?
+            if(round > 0) res[g] = Main.games[round-1][currentSolution.sol[round-1][umpire]].nextGames[g];
             else res[g] = g;
             int home = Main.games[round][res[g]].home - 1;
             int away = Main.games[round][res[g]].away - 1;
@@ -203,7 +204,7 @@ public class BranchAndBound {
             Main.usedBounds[round][endRound]++;
             int extraUnassignedUmpireCost = 0;
             if(round > 0 && Main.nUmps - umpire - 1 > 0) extraUnassignedUmpireCost = Main.partialBounds[round][Main.nUmps - umpire -1];
-            if (currentSolution.totalDistance + cost + Main.lowerbounds[round][endRound] + extraUnassignedUmpireCost < subResult) {  // todo: in aparte methode? is de r+1 correct?
+            if (currentSolution.totalDistance + cost + Main.lowerBounds[round][endRound] + extraUnassignedUmpireCost < subResult) {  // todo: in aparte methode? is de r+1 correct?
                 int homeIndex = Main.games[round][game].home-1;
                 int awayIndex = Main.games[round][game].away-1;
                 currentSolution.addGame(round, umpire, game, cost);

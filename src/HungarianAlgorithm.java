@@ -54,6 +54,27 @@ public class HungarianAlgorithm {
         return totalCost;
     }
 
+    public static int[] hungarianAlgoPartial(int[][] matrix) {
+        int[][] hardMatrix = new int[matrix.length][matrix.length];
+        for (int currentG=0; currentG<matrix.length; currentG++) {
+            for (int nextG=0; nextG<matrix.length; nextG++) {
+                hardMatrix[currentG][nextG] = matrix[currentG][nextG];
+            }
+        }
+
+
+        int[][] res = computeAssignments(matrix);
+
+        // Calculate total minimum cost
+        int[] costs = new int[matrix.length];
+
+        for(int i = 0; i < matrix.length; i++) {
+            costs[i] = hardMatrix[res[i][0]][i];
+        }
+
+        return costs;
+    }
+
     public static int hungarianAlgo(int round) {
         int[][] matrix = new int[Main.nUmps][Main.nUmps];
         int[][] hardMatrix = new int[Main.nUmps][Main.nUmps];
