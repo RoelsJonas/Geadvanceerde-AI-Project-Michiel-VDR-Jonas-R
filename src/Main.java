@@ -21,7 +21,7 @@ public class Main {
     public static String best = "No solution found";
     public static int upperBound = Integer.MAX_VALUE;
     public static String fileName = "umps14";
-    public static int q1 = 8;  // umpire not in venue for q1 consecutive rounds
+    public static int q1 = 7;  // umpire not in venue for q1 consecutive rounds
     public static int q2 = 3;  // umpire not for same team in q2 consecutive rounds
     public static int[][] dist;
     public static int[][] opponents;
@@ -68,16 +68,52 @@ public class Main {
 
 
         // Fix the first round
-        for(int i = 0; i < nUmps; i++) {
-            int homeIndex = Main.games[0][i].home-1;
-            int awayIndex = Main.games[0][i].away-1;
-            currentSolution.addGame(0, i, i, 0);
-            Main.umpires[i].q1TeamCounter[homeIndex] = 0;
-            Main.umpires[i].q2TeamCounter[homeIndex] = 0;
-            Main.umpires[i].q2TeamCounter[awayIndex] = 0;
+//        for(int i = 0; i < nUmps; i++) {
+//            int homeIndex = Main.games[0][i].home-1;
+//            int awayIndex = Main.games[0][i].away-1;
+//            currentSolution.addGame(0, i, i, 0);
+//            Main.umpires[i].q1TeamCounter[homeIndex] = 0;
+//            Main.umpires[i].q2TeamCounter[homeIndex] = 0;
+//            Main.umpires[i].q2TeamCounter[awayIndex] = 0;
+//        }
+
+//        BranchAndBoundParallel bnb = new BranchAndBoundParallel();
+//        bnb.branchBound(0, 1);
+
+
+        ExecutorService[] executors = new ExecutorService[nUmps-1];
+        Future<?>[] futures = new Future[nUmps-1];
+        for(int i = 0; i < nUmps-1; i++) {
+            executors[i] = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         }
 
-        BranchAndBound.branchBound(currentSolution, 0, 1);
+        // Create nUmps threads and fix the next game for the first umpire
+        for(int i = 0; i < nUmps - 1; i++) {
+            BranchAndBoundParallel bnbi = new BranchAndBoundParallel();
+            // fix the first game of round 1
+            int homeIndex = Main.games[1][i].home-1;
+            int awayIndex = Main.games[1][i].away-1;
+            int cost = bnbi.currentSolution.calculateDistance(1, 0, i);
+            bnbi.currentSolution.addGame(1, 0, i, cost);
+            bnbi.umpires[0].q1TeamCounter[homeIndex] = 1;
+            bnbi.umpires[0].q2TeamCounter[homeIndex] = 1;
+            bnbi.umpires[0].q2TeamCounter[awayIndex] = 1;
+            futures[i] = executors[i].submit(() -> bnbi.branchBound(1, 1));
+        }
+//
+        BranchAndBoundParallel bnb = new BranchAndBoundParallel();
+        int homeIndex = Main.games[1][nUmps-1].home-1;
+        int awayIndex = Main.games[1][nUmps-1].away-1;
+        int cost = bnb.currentSolution.calculateDistance(1, 0, nUmps-1);
+        bnb.currentSolution.addGame(1, 0, nUmps-1, cost);
+        bnb.umpires[0].q1TeamCounter[homeIndex] = 1;
+        bnb.umpires[0].q2TeamCounter[homeIndex] = 1;
+        bnb.umpires[0].q2TeamCounter[awayIndex] = 1;
+        bnb.branchBound(1, 1);
+//
+        for(int i = 0; i < nUmps - 1; i++) {
+            futures[i].get();
+        }
         try {
             future.get(); // This will block until the calculation is complete
             if (DEBUG){
@@ -113,7 +149,7 @@ public class Main {
         writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", best);
         System.out.println("Best solution: " + upperBound);
         System.out.println(best);
-        System.out.println("Visited Nodes: " + BranchAndBound.nodeCounter + ", in: " + (System.currentTimeMillis() - BranchAndBound.startTime) + " ms");
+        System.out.println("Visited Nodes: " + BranchAndBoundParallel.nodeCounter + ", in: " + (System.currentTimeMillis() - BranchAndBound.startTime) + " ms");
 
 }
     private static void calculatePartialBounds() {
