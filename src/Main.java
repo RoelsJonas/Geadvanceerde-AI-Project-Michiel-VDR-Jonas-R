@@ -6,6 +6,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Main {
+    // COMMAND LINE CALL:
     // VALIDATE THE SOLUTION USING  java -jar validator.jar .\\instances\\umps8.txt 2 2 .\\solutions\\sol_umps8_2_2.txt
     // CONSTANTS
     public static final boolean DEBUG = true;
@@ -23,7 +24,9 @@ public class Main {
     public static final Lock lock = new ReentrantLock();
     public static String best = "No solution found";
     public static int upperBound = Integer.MAX_VALUE;
-    public static String fileName = "umps14";
+    public static String fileName = "./instances/umps14.txt";
+    public static String solutionName = "./solutions/sol_umps14_8_3.txt";
+    public static long maxRunTime = Long.MAX_VALUE;
     public static int q1 = 8;  // umpire not in venue for q1 consecutive rounds
     public static int q2 = 3;  // umpire not for same team in q2 consecutive rounds
     public static int[][] dist;
@@ -35,10 +38,19 @@ public class Main {
     public static int[][] usedBounds;
     public static int[][] partialBounds;
     public static void main(String[] args) throws Exception {
-//        BranchAndBound.startTime = System.currentTimeMillis();
+        if(args.length >= 4) {
+            fileName = args[0];
+            q1 = Integer.parseInt(args[1]);
+            q2 = Integer.parseInt(args[2]);
+            solutionName = args[3];
+        }
+
+        if(args.length >= 5) {
+            maxRunTime = Long.parseLong(args[4]) * 60 * 1000;
+        }
 
         // Open the file
-        readInput("instances/" + fileName + ".txt");
+        readInput(fileName);
         processGames();
 
         Solution currentSolution = new Solution();
@@ -94,7 +106,7 @@ public class Main {
             if(prevUpperBound != upperBound) {
                 lock.lock();
                 if(validate())
-                    writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", best);
+                    writeSolution(solutionName, best);
                 else
                     System.out.printf("INVALID SOLUTION!!!\n%s\n", best);
                 prevUpperBound = upperBound;
@@ -133,7 +145,7 @@ public class Main {
         executor.shutdown();
 
 
-        writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", best);
+        writeSolution(solutionName, best);
         System.out.println("Best solution: " + upperBound);
         System.out.println(best);
         System.out.println("Visited Nodes: " + BranchAndBoundParallel.nodeCounter + ", in: " + (System.currentTimeMillis() - BranchAndBoundParallel.startTime) + " ms");

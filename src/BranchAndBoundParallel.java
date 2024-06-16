@@ -31,6 +31,7 @@ public class BranchAndBoundParallel {
     }
 
     public void branchBound(int umpire, int round) {
+        if(System.currentTimeMillis() - startTime > Main.maxRunTime) return;
         nodeCounter++;
         // Determine the next umpire and round
         int nextUmpire = (umpire+1) % Main.nUmps;
@@ -124,11 +125,7 @@ public class BranchAndBoundParallel {
                             if (Main.upperBound > currentSolution.totalDistance) {
                                 Main.best = sol;
                                 Main.upperBound = currentSolution.totalDistance;
-                                if(Main.validate()) {
-                                    System.out.println("NEW BEST SOLUTION: " + Main.upperBound + " (" + (System.currentTimeMillis() - startTime) + "ms)");
-                                    Main.writeSolution("solutions/sol_" + Main.fileName + "_" + Main.q1 + "_" + Main.q2 + ".txt", Main.best);
-                                }
-                                else
+                                if(!Main.validate())
                                     System.out.printf("INVALID SOLUTION (%d)!!!\n%s\n", Main.upperBound, Main.best);
                             }
                         Main.lock.unlock();
@@ -186,6 +183,7 @@ public class BranchAndBoundParallel {
 
 
     public int subBranchBound(int umpire, int round, int startRound, int endRound) {
+        if(System.currentTimeMillis() - startTime > Main.maxRunTime) return subResult;
         // Determine the next umpire and round
         int nextUmpire = (umpire+1) % Main.nUmps;
         int nextRound = (nextUmpire == 0) ? round+1 : round;
