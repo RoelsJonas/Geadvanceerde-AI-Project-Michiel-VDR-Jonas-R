@@ -47,7 +47,15 @@ public class Main {
         usedBounds = new int[nRounds][nRounds];
 
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        Future<?> future = executor.submit(() -> calculateLowerBounds());
+        Future<?> future = executor.submit(() -> {
+            try {
+                calculateLowerBounds();
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
 
         ExecutorService[] executors = new ExecutorService[nUmps];
         Future<?>[] futures = new Future[nUmps];
@@ -172,7 +180,15 @@ public class Main {
     }
 
     // TODO IMPLEMENT INTERMEDIARY BOUNDS PROPAGATION
-    private static void calculateLowerBounds() {
+    private static void calculateLowerBounds() throws ExecutionException, InterruptedException {
+        ExecutorService[] executors = new ExecutorService[nRounds];
+        Future<?>[] futures = new Future[nRounds];
+        for(int i = 0; i < nRounds; i++) {
+            executors[i] = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+            futures[i] = null;
+        }
+
+
         for(int r=nRounds - 2; r>=0; r--) {
             sol_subProblems[r][r+1] = HungarianAlgorithm.hungarianAlgo(r);
             for (int r2=r+1; r2<nRounds; r2++) {
@@ -180,7 +196,6 @@ public class Main {
             }
         }
         for(int k=2; k<nRounds; k++) {
-
             // propagate bounds upwards
             if(INTERMEDIARY_BOUNDS_EN) {
                 for(int i = nRounds - 2; i >= 0; i--) for(int j = nRounds - 1; j >= 0; j--) {
@@ -189,38 +204,74 @@ public class Main {
             }
             int r = nRounds - 1 - k;
             while (r >= 1) {  // >1
-                for (int rr = r+k-2; rr >= r; rr--) // rr=r+k-1 en rr>r+1 rr--
-                    if(sol_subProblems[rr][r+k] == 0)
-                    {
-                        Umpire[] subUmps = new Umpire[nUmps];
-                        for(int i = 0; i < nUmps; i++) {
-                            subUmps[i] = new Umpire(i);
-                            subUmps[i].q1TeamCounterLB = umpires[i].q1TeamCounterLB.clone();
-                            subUmps[i].q2TeamCounterLB = umpires[i].q2TeamCounterLB.clone();
-                        }
-                        Solution a_solution = new Solution();
-                        for(int i = 0; i < nUmps; i++) {
-                            int homeIndex = Main.games[rr][i].home-1;
-                            int awayIndex = Main.games[rr][i].away-1;
-                            a_solution.addGame(rr, i, i, 0);
-                            subUmps[i].q1TeamCounterLB[homeIndex] = rr;
-                            subUmps[i].q2TeamCounterLB[homeIndex] = rr;
-                            subUmps[i].q2TeamCounterLB[awayIndex] = rr;
-                        }
-                        BranchAndBoundParallel subBnB = new BranchAndBoundParallel(a_solution, subUmps);
-                        sol_subProblems[rr][r+k] = subBnB.subBranchBound(0, rr+1, rr+0, r+k);
-                        for(int r1 = rr; r1 >= 0; r1--) {
-                            for (int r2 = r+k; r2 < nRounds; r2++) {
-                                lowerBounds[r1][r2] = Math.max(lowerBounds[r1][r2],
-                                        lowerBounds[r1][rr]+sol_subProblems[rr][r+k]+ lowerBounds[r+k][r2]);
+                for (int rr = r+k-2; rr >= r; rr--) {
+                    if (sol_subProblems[rr][r + k] == 0) {
+                        int finalRR = rr;
+                        int finalR = r;
+                        int finalK = k;
+                        futures[rr] = executors[rr].submit(() -> {
+                            Umpire[] subUmps = new Umpire[nUmps];
+                            for (int i = 0; i < nUmps; i++) {
+                                subUmps[i] = new Umpire(i);
+                                subUmps[i].q1TeamCounterLB = umpires[i].q1TeamCounterLB.clone();
+                                subUmps[i].q2TeamCounterLB = umpires[i].q2TeamCounterLB.clone();
                             }
-                        }
+                            Solution a_solution = new Solution();
+                            for (int i = 0; i < nUmps; i++) {
+                                int homeIndex = Main.games[finalRR][i].home - 1;
+                                int awayIndex = Main.games[finalRR][i].away - 1;
+                                a_solution.addGame(finalRR, i, i, 0);
+                                subUmps[i].q1TeamCounterLB[homeIndex] = finalRR;
+                                subUmps[i].q2TeamCounterLB[homeIndex] = finalRR;
+                                subUmps[i].q2TeamCounterLB[awayIndex] = finalRR;
+                            }
+                            BranchAndBoundParallel subBnB = new BranchAndBoundParallel(a_solution, subUmps);
+                            sol_subProblems[finalRR][finalR + finalK] = subBnB.subBranchBound(0, finalRR + 1, finalRR + 0, finalR + finalK);
+                            for (int r1 = finalRR; r1 >= 0; r1--) {
+                                for (int r2 = finalR+ finalK; r2 < nRounds; r2++) {
+                                    lowerBounds[r1][r2] = Math.max(lowerBounds[r1][r2],
+                                            lowerBounds[r1][finalRR] + sol_subProblems[finalRR][finalR + finalK] + lowerBounds[finalR + finalK][r2]);
+                                }
+                            }
+                        });
+//                        Umpire[] subUmps = new Umpire[nUmps];
+//                        for (int i = 0; i < nUmps; i++) {
+//                            subUmps[i] = new Umpire(i);
+//                            subUmps[i].q1TeamCounterLB = umpires[i].q1TeamCounterLB.clone();
+//                            subUmps[i].q2TeamCounterLB = umpires[i].q2TeamCounterLB.clone();
+//                        }
+//                        Solution a_solution = new Solution();
+//                        for (int i = 0; i < nUmps; i++) {
+//                            int homeIndex = Main.games[rr][i].home - 1;
+//                            int awayIndex = Main.games[rr][i].away - 1;
+//                            a_solution.addGame(rr, i, i, 0);
+//                            subUmps[i].q1TeamCounterLB[homeIndex] = rr;
+//                            subUmps[i].q2TeamCounterLB[homeIndex] = rr;
+//                            subUmps[i].q2TeamCounterLB[awayIndex] = rr;
+//                        }
+//                        BranchAndBoundParallel subBnB = new BranchAndBoundParallel(a_solution, subUmps);
+//                        sol_subProblems[rr][r + k] = subBnB.subBranchBound(0, rr + 1, rr + 0, r + k);
+//                        for (int r1 = rr; r1 >= 0; r1--) {
+//                            for (int r2 = r + k; r2 < nRounds; r2++) {
+//                                lowerBounds[r1][r2] = Math.max(lowerBounds[r1][r2],
+//                                        lowerBounds[r1][rr] + sol_subProblems[rr][r + k] + lowerBounds[r + k][r2]);
+//                            }
+//                        }
+                    }
+                }
+                for (int rr = r+k-2; rr >= r; rr--) {
+                    if(futures[rr] == null) continue;
+                    futures[rr].get();
+                    futures[rr] = null;
                 }
                 if(FULL_EXPLORATION_EN) r -= 1;
                 else r -= k;
             }
         }
         System.out.println("Lower bounds calculated");
+        for(int i = 0; i<nRounds; i++) {
+            executors[i].shutdown();
+        }
     }
 
     private static void readInput(String fileName) throws IOException {
