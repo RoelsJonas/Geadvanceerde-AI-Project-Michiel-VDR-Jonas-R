@@ -1,5 +1,3 @@
-import java.util.HashMap;
-
 public class BranchAndBoundParallel {
     public int subResult = Integer.MAX_VALUE;
     public static long nodeCounter = 0;
@@ -20,8 +18,6 @@ public class BranchAndBoundParallel {
         umpires = new Umpire[Main.nUmps];
         for (int i=0; i<Main.nUmps; i++) {
             umpires[i] = new Umpire(i);
-//            umpires[i].q1TeamCounter = Main.umpires[i].q1TeamCounter.clone();
-//            umpires[i].q2TeamCounter = Main.umpires[i].q2TeamCounter.clone();
         }
         // fix the first round
         for(int i = 0; i < Main.nUmps; i++) {
@@ -123,9 +119,7 @@ public class BranchAndBoundParallel {
                         break;
                     }
                     String sol = currentSolution.toString();
-                    if(feasible
-//                            && validate(sol)
-                    ) {
+                    if(feasible) {
                         Main.lock.lock();
                             if (Main.upperBound > currentSolution.totalDistance) {
                                 Main.best = sol;
@@ -136,7 +130,6 @@ public class BranchAndBoundParallel {
                                 }
                                 else
                                     System.out.printf("INVALID SOLUTION (%d)!!!\n%s\n", Main.upperBound, Main.best);
-//                            Main.writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", Main.best);
                             }
                         Main.lock.unlock();
                     }
@@ -169,7 +162,6 @@ public class BranchAndBoundParallel {
             }
         }
 
-//        Arrays.sort(res);
         return res;
     }
 
@@ -189,13 +181,11 @@ public class BranchAndBoundParallel {
             }
         }
 
-//        Arrays.sort(res);
         return res;
     }
 
 
     public int subBranchBound(int umpire, int round, int startRound, int endRound) {
-//        System.out.println(endRound);
         // Determine the next umpire and round
         int nextUmpire = (umpire+1) % Main.nUmps;
         int nextRound = (nextUmpire == 0) ? round+1 : round;
@@ -220,11 +210,7 @@ public class BranchAndBoundParallel {
 
                 // If there is a next round we recurse else we start the local search algorithm
                 if (nextRound <= endRound)
-//                    if(Main.nTeams - umpires[umpire].countVisitedLocations(false) + startRound <= Main.nRounds - round - 1)
-//                    if(umpires[umpire].countVisitedLocations(false) + Main.nRounds - round + startRound + 1 >= Main.nTeams)
                         subBranchBound(nextUmpire, nextRound, startRound, endRound);
-
-//                    subBranchBound(nextUmpire, nextRound, startRound, endRound);
 
                 else if (subResult > currentSolution.totalDistance)
                     subResult = currentSolution.totalDistance;
@@ -261,7 +247,6 @@ public class BranchAndBoundParallel {
                 }
                 if (!visited) {
                     return false;
-//                    System.out.println("Umpire " + i + " does not visit location " + (j+1));
                 }
             }
         }
@@ -308,8 +293,6 @@ public class BranchAndBoundParallel {
                     if(k >= Main.nRounds) break;
                     if(homeLocations[i][k] == homeTeam || awayTeams[i][k] == homeTeam || homeLocations[i][k] == team || awayTeams[i][k] == team) {
                         visited = true;
-//                        System.out.println("Q2 VIOLATION: Umpire: " + i + ", rounds: " + j + " and " + k + ", teams: " + team + " and " + homeTeam);
-//                        System.out.println(sol);
                         break;
                     }
                 }

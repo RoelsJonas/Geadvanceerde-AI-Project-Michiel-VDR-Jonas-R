@@ -66,10 +66,6 @@ public class Main {
             executors[i] = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         }
 
-        // add a delay to start the bnb
-//        Thread.sleep(5000);
-
-
         // Create nUmps threads and fix the next game for the first umpire
         for(int i = 0; i < nUmps; i++) {
             BranchAndBoundParallel bnbi = new BranchAndBoundParallel();
