@@ -4,11 +4,10 @@ public class BranchAndBoundParallel {
     public int subResult = Integer.MAX_VALUE;
     public static long nodeCounter = 0;
     public static long startTime = System.currentTimeMillis();
-    public static HashMap<Integer, Long> firstPrunes = new HashMap<>();
-    public static HashMap<Integer, Long> secondPrunes = new HashMap<>();
     public Umpire[] umpires;
-
     public Solution currentSolution;
+    public boolean main = false;
+
 
     public BranchAndBoundParallel(Solution currentSolution, Umpire[] umpires) {
         this.currentSolution = currentSolution;
@@ -16,7 +15,6 @@ public class BranchAndBoundParallel {
     }
 
     public BranchAndBoundParallel() {
-//        startTime = System.currentTimeMillis();
         currentSolution = new Solution();
         // create a copy of the umpires from main
         umpires = new Umpire[Main.nUmps];
@@ -24,8 +22,6 @@ public class BranchAndBoundParallel {
             umpires[i] = new Umpire(i);
             umpires[i].q1TeamCounter = Main.umpires[i].q1TeamCounter.clone();
             umpires[i].q2TeamCounter = Main.umpires[i].q2TeamCounter.clone();
-            umpires[i].q1TeamCounterLB = Main.umpires[i].q1TeamCounterLB.clone();
-            umpires[i].q2TeamCounterLB = Main.umpires[i].q2TeamCounterLB.clone();
         }
         // fix the first round
         for(int i = 0; i < Main.nUmps; i++) {
@@ -39,17 +35,13 @@ public class BranchAndBoundParallel {
     }
 
     public void branchBound(int umpire, int round) {
-//        if(System.currentTimeMillis() - startTime > 300000) return;
         nodeCounter++;
-        if(Main.DEBUG && nodeCounter % 10000000 == 0) {
-            System.out.println("Nodes per second: " + (nodeCounter / ((double)(System.currentTimeMillis() - startTime) / 1000)) + " Nodes: " + nodeCounter + " Best: " + Main.upperBound);
-        }
         // Determine the next umpire and round
         int nextUmpire = (umpire+1) % Main.nUmps;
         int nextRound = (nextUmpire == 0) ? round+1 : round;
 
         // Get an array (sorted by shorted distance) of all feasible next games the current umpire can be assigned to in this round
-        int[] feasibleNextGames = getFeasibleAllocations(umpire, round, true); // TODO OPTIMIZE
+        int[] feasibleNextGames = getFeasibleAllocations(umpire, round); // TODO OPTIMIZE
         for(int game : feasibleNextGames) {
             if (game < 0) continue; // Infeasible games get marked with a negative number
             if(currentSolution.roundAlreadyHasGame(round, game)) continue; // Game cannot already be allocated in current round TODO OPTIMIZE
@@ -120,41 +112,39 @@ public class BranchAndBoundParallel {
 
                 // If there is a next round we recurse else we start the local search algorithm
                 if (nextRound < Main.nRounds) {
-                    if(umpires[umpire].countVisitedLocations(true) + Main.nRounds - round >= Main.nTeams)
+                    if(umpires[umpire].countVisitedLocations() + Main.nRounds - round >= Main.nTeams)
                         branchBound(nextUmpire, nextRound);
                 }
                 else {
                     // check if all team-venues are visited by every umpire
                     boolean feasible = true;
-                    for (Umpire u: umpires) if(!u.hasVisitedAllLocations(true)) {
+                    for (Umpire u: umpires) if(!u.hasVisitedAllLocations()) {
                         feasible = false;
                         break;
                     }
                     if(feasible) {
                         Solution betterSolution = LocalSearch.localSearch(currentSolution);
-                        synchronized (this) {
+                        Main.lock.lock();
                             if (Main.upperBound > betterSolution.totalDistance) {
                                 Main.best = betterSolution.toString();
                                 Main.upperBound = betterSolution.totalDistance;
-//                            System.out.println("New best solution: " + Main.upperBound);
                             Main.writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", Main.best);
                             }
-                        }
+//                        }
+                        Main.lock.unlock();
                     }
                 }
                 currentSolution.removeGame(round, umpire, game, cost);
                 umpires[umpire].q1TeamCounter[homeIndex] = previousQ1;
                 umpires[umpire].q2TeamCounter[homeIndex] = previousQ2Home;
                 umpires[umpire].q2TeamCounter[awayIndex] = previousQ2Away;
-            } else {
-                secondPrunes.put(round, secondPrunes.getOrDefault(round, 0L) + 1);
             }
         }
     }
 
     // return all feasible next games
-    public int[] getFeasibleAllocations(int umpire, int round, boolean realdeal) {
-        if(!Main.SORT_ALLOCATIONS_EN) return getFeasibleSubAllocations(umpire, round, realdeal);
+    public int[] getFeasibleAllocations(int umpire, int round) {
+        if(!Main.SORT_ALLOCATIONS_EN) return getFeasibleSubAllocations(umpire, round);
         Umpire ump = umpires[umpire];
         int[] res = new int[Main.nUmps];
         for (int g=0; g<Main.nUmps; g++){
@@ -165,19 +155,11 @@ public class BranchAndBoundParallel {
             int away = Main.games[round][res[g]].away - 1;
 
             // if the umpire has already visited the venue in the last q1 consecutive rounds or already officiated one of the teams in the last q2 rounds, mark the game as infeasible
-            if (realdeal) {
-                if (ump.q1TeamCounter[home] + Main.q1 > round
-                        || ump.q2TeamCounter[home] + Main.q2 > round
-                        || ump.q2TeamCounter[away] + Main.q2 > round){
-                    res[g] = -1;
-                }
-            }
-            else {
-                if (ump.q1TeamCounterLB[home] + Main.q1 > round
-                        || ump.q2TeamCounterLB[home] + Main.q2 > round
-                        || ump.q2TeamCounterLB[away] + Main.q2 > round){
-                    res[g] = -1;
-                }
+
+            if (ump.q1TeamCounter[home] + Main.q1 > round
+                    || ump.q2TeamCounter[home] + Main.q2 > round
+                    || ump.q2TeamCounter[away] + Main.q2 > round){
+                res[g] = -1;
             }
         }
 
@@ -185,7 +167,7 @@ public class BranchAndBoundParallel {
         return res;
     }
 
-    public int[] getFeasibleSubAllocations(int umpire, int round, boolean realdeal) {
+    public int[] getFeasibleSubAllocations(int umpire, int round) {
         Umpire ump = umpires[umpire];
         int[] res = new int[Main.nUmps];
         for (int g=0; g<Main.nUmps; g++){
@@ -194,19 +176,10 @@ public class BranchAndBoundParallel {
             int away = Main.games[round][g].away - 1;
 
             // if the umpire has already visited the venue in the last q1 consecutive rounds or already officiated one of the teams in the last q2 rounds, mark the game as infeasible
-            if (realdeal) {
-                if (ump.q1TeamCounter[home] + Main.q1 > round
-                        || ump.q2TeamCounter[home] + Main.q2 > round
-                        || ump.q2TeamCounter[away] + Main.q2 > round){
-                    res[g] = -1;
-                }
-            }
-            else {
-                if (ump.q1TeamCounterLB[home] + Main.q1 > round
-                        || ump.q2TeamCounterLB[home] + Main.q2 > round
-                        || ump.q2TeamCounterLB[away] + Main.q2 > round){
-                    res[g] = -1;
-                }
+            if (ump.q1TeamCounter[home] + Main.q1 > round
+                    || ump.q2TeamCounter[home] + Main.q2 > round
+                    || ump.q2TeamCounter[away] + Main.q2 > round){
+                res[g] = -1;
             }
         }
 
@@ -222,36 +195,38 @@ public class BranchAndBoundParallel {
         int nextRound = (nextUmpire == 0) ? round+1 : round;
 
         // Get an array (sorted by shorted distance) of all feasible next games the current umpire can be assigned to in this round
-        int[] feasibleNextGames = getFeasibleSubAllocations(umpire, round, false);
+        int[] feasibleNextGames = getFeasibleSubAllocations(umpire, round);
         for(int game : feasibleNextGames) {
             if (game < 0 || currentSolution.roundAlreadyHasGame(round, game)) continue; // Infeasible games get marked with a negative number
             int cost = currentSolution.calculateDistance(round, umpire, game);
-            Main.usedBounds[round][endRound]++;
             int extraUnassignedUmpireCost = 0;
             if(round > 0 && Main.nUmps - umpire - 1 > 0) extraUnassignedUmpireCost = Main.partialBounds[round][Main.nUmps - umpire -1];
             if (currentSolution.totalDistance + cost + Main.lowerBounds[round][endRound] + extraUnassignedUmpireCost < subResult) {  // todo: in aparte methode? is de r+1 correct?
                 int homeIndex = Main.games[round][game].home-1;
                 int awayIndex = Main.games[round][game].away-1;
                 currentSolution.addGame(round, umpire, game, cost);
-                int previousQ1 = umpires[umpire].q1TeamCounterLB[homeIndex];
-                umpires[umpire].q1TeamCounterLB[homeIndex] = round;
-                int previousQ2Home = umpires[umpire].q2TeamCounterLB[homeIndex];
-                int previousQ2Away = umpires[umpire].q2TeamCounterLB[awayIndex];
-                umpires[umpire].q2TeamCounterLB[homeIndex] = round;
-                umpires[umpire].q2TeamCounterLB[awayIndex] = round;
+                int previousQ1 = umpires[umpire].q1TeamCounter[homeIndex];
+                umpires[umpire].q1TeamCounter[homeIndex] = round;
+                int previousQ2Home = umpires[umpire].q2TeamCounter[homeIndex];
+                int previousQ2Away = umpires[umpire].q2TeamCounter[awayIndex];
+                umpires[umpire].q2TeamCounter[homeIndex] = round;
+                umpires[umpire].q2TeamCounter[awayIndex] = round;
 
                 // If there is a next round we recurse else we start the local search algorithm
                 if (nextRound <= endRound)
-//                    if(Main.umpires[umpire].countVisitedLocations() + Main.nRounds - round + startRound >= Main.nTeams - 1)
-                    subBranchBound(nextUmpire, nextRound, startRound, endRound);
+//                    if(Main.nTeams - umpires[umpire].countVisitedLocations(false) + startRound <= Main.nRounds - round - 1)
+//                    if(umpires[umpire].countVisitedLocations(false) + Main.nRounds - round + startRound + 1 >= Main.nTeams)
+                        subBranchBound(nextUmpire, nextRound, startRound, endRound);
+
+//                    subBranchBound(nextUmpire, nextRound, startRound, endRound);
 
                 else if (subResult > currentSolution.totalDistance)
                     subResult = currentSolution.totalDistance;
 
                 currentSolution.removeGame(round, umpire, game, cost);
-                umpires[umpire].q1TeamCounterLB[homeIndex] = previousQ1;
-                umpires[umpire].q2TeamCounterLB[homeIndex] = previousQ2Home;
-                umpires[umpire].q2TeamCounterLB[awayIndex] = previousQ2Away;
+                umpires[umpire].q1TeamCounter[homeIndex] = previousQ1;
+                umpires[umpire].q2TeamCounter[homeIndex] = previousQ2Home;
+                umpires[umpire].q2TeamCounter[awayIndex] = previousQ2Away;
             }
         }
         return subResult;
