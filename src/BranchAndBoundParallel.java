@@ -2,13 +2,18 @@ import java.util.HashMap;
 
 public class BranchAndBoundParallel {
     public int subResult = Integer.MAX_VALUE;
-    public static int nodeCounter = 0;
+    public static long nodeCounter = 0;
     public static long startTime = System.currentTimeMillis();
     public static HashMap<Integer, Long> firstPrunes = new HashMap<>();
     public static HashMap<Integer, Long> secondPrunes = new HashMap<>();
     public Umpire[] umpires;
 
     public Solution currentSolution;
+
+    public BranchAndBoundParallel(Solution currentSolution, Umpire[] umpires) {
+        this.currentSolution = currentSolution;
+        this.umpires = umpires;
+    }
 
     public BranchAndBoundParallel() {
 //        startTime = System.currentTimeMillis();
@@ -127,11 +132,13 @@ public class BranchAndBoundParallel {
                     }
                     if(feasible) {
                         Solution betterSolution = LocalSearch.localSearch(currentSolution);
-                        if (Main.upperBound > betterSolution.totalDistance) {
-                            Main.best = betterSolution.toString();
-                            Main.upperBound = betterSolution.totalDistance;
+                        synchronized (this) {
+                            if (Main.upperBound > betterSolution.totalDistance) {
+                                Main.best = betterSolution.toString();
+                                Main.upperBound = betterSolution.totalDistance;
 //                            System.out.println("New best solution: " + Main.upperBound);
-//                            Main.writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", Main.best);
+                            Main.writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", Main.best);
+                            }
                         }
                     }
                 }
@@ -205,5 +212,48 @@ public class BranchAndBoundParallel {
 
 //        Arrays.sort(res);
         return res;
+    }
+
+
+    public int subBranchBound(int umpire, int round, int startRound, int endRound) {
+//        System.out.println(endRound);
+        // Determine the next umpire and round
+        int nextUmpire = (umpire+1) % Main.nUmps;
+        int nextRound = (nextUmpire == 0) ? round+1 : round;
+
+        // Get an array (sorted by shorted distance) of all feasible next games the current umpire can be assigned to in this round
+        int[] feasibleNextGames = getFeasibleSubAllocations(umpire, round, false);
+        for(int game : feasibleNextGames) {
+            if (game < 0 || currentSolution.roundAlreadyHasGame(round, game)) continue; // Infeasible games get marked with a negative number
+            int cost = currentSolution.calculateDistance(round, umpire, game);
+            Main.usedBounds[round][endRound]++;
+            int extraUnassignedUmpireCost = 0;
+            if(round > 0 && Main.nUmps - umpire - 1 > 0) extraUnassignedUmpireCost = Main.partialBounds[round][Main.nUmps - umpire -1];
+            if (currentSolution.totalDistance + cost + Main.lowerBounds[round][endRound] + extraUnassignedUmpireCost < subResult) {  // todo: in aparte methode? is de r+1 correct?
+                int homeIndex = Main.games[round][game].home-1;
+                int awayIndex = Main.games[round][game].away-1;
+                currentSolution.addGame(round, umpire, game, cost);
+                int previousQ1 = umpires[umpire].q1TeamCounterLB[homeIndex];
+                umpires[umpire].q1TeamCounterLB[homeIndex] = round;
+                int previousQ2Home = umpires[umpire].q2TeamCounterLB[homeIndex];
+                int previousQ2Away = umpires[umpire].q2TeamCounterLB[awayIndex];
+                umpires[umpire].q2TeamCounterLB[homeIndex] = round;
+                umpires[umpire].q2TeamCounterLB[awayIndex] = round;
+
+                // If there is a next round we recurse else we start the local search algorithm
+                if (nextRound <= endRound)
+//                    if(Main.umpires[umpire].countVisitedLocations() + Main.nRounds - round + startRound >= Main.nTeams - 1)
+                    subBranchBound(nextUmpire, nextRound, startRound, endRound);
+
+                else if (subResult > currentSolution.totalDistance)
+                    subResult = currentSolution.totalDistance;
+
+                currentSolution.removeGame(round, umpire, game, cost);
+                umpires[umpire].q1TeamCounterLB[homeIndex] = previousQ1;
+                umpires[umpire].q2TeamCounterLB[homeIndex] = previousQ2Home;
+                umpires[umpire].q2TeamCounterLB[awayIndex] = previousQ2Away;
+            }
+        }
+        return subResult;
     }
 }

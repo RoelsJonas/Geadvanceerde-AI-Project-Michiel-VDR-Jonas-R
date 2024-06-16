@@ -20,9 +20,9 @@ public class Main {
     public static int nRounds;
     public static String best = "No solution found";
     public static int upperBound = Integer.MAX_VALUE;
-    public static String fileName = "umps12";
+    public static String fileName = "umps14";
     public static int q1 = 7;  // umpire not in venue for q1 consecutive rounds
-    public static int q2 = 2;  // umpire not for same team in q2 consecutive rounds
+    public static int q2 = 3;  // umpire not for same team in q2 consecutive rounds
     public static int[][] dist;
     public static int[][] opponents;
     public static Game[][] games;
@@ -179,60 +179,38 @@ public class Main {
                 lowerBounds[r][r2] = sol_subProblems[r][r+1] + lowerBounds[r+1][r2];
             }
         }
-        Solution a_solution = new Solution();
         for(int k=2; k<nRounds; k++) {
 
             // propagate bounds upwards
             if(INTERMEDIARY_BOUNDS_EN) {
-//                System.out.println("Propagating: " + k);
                 for(int i = nRounds - 2; i >= 0; i--) for(int j = nRounds - 1; j >= 0; j--) {
                     lowerBounds[i][j] = Math.max(lowerBounds[i][j], lowerBounds[i+1][j]);
                 }
-//                for(int i = nRounds - 2; i >= 0; i--) {
-////                    System.out.println("Propagating: " + k);
-//                    lowerBounds[i][nRounds-1] = Math.max(lowerBounds[i][nRounds-1], lowerBounds[i+1][nRounds-1]);
-//                }
             }
-//            System.out.println("Done propagating");
             int r = nRounds - 1 - k;
-//            System.out.println("====== k: " + k +", r: " + r + " ======");
             while (r >= 1) {  // >1
-//                System.out.println("rr: " + (r+k-2) + ", r: " + r);
                 for (int rr = r+k-2; rr >= r; rr--) // rr=r+k-1 en rr>r+1 rr--
                     if(sol_subProblems[rr][r+k] == 0)
                     {
-                        BranchAndBound.subResult = Integer.MAX_VALUE;
-                        a_solution = new Solution();
-                        // Fix the first round
+                        Umpire[] subUmps = new Umpire[nUmps];
+                        for(int i = 0; i < nUmps; i++) {
+                            subUmps[i] = new Umpire(i);
+                            subUmps[i].q1TeamCounterLB = umpires[i].q1TeamCounterLB.clone();
+                            subUmps[i].q2TeamCounterLB = umpires[i].q2TeamCounterLB.clone();
+                        }
+                        Solution a_solution = new Solution();
                         for(int i = 0; i < nUmps; i++) {
                             int homeIndex = Main.games[rr][i].home-1;
                             int awayIndex = Main.games[rr][i].away-1;
                             a_solution.addGame(rr, i, i, 0);
-                            Main.umpires[i].q1TeamCounterLB[homeIndex] = rr;
-                            Main.umpires[i].q2TeamCounterLB[homeIndex] = rr;
-                            Main.umpires[i].q2TeamCounterLB[awayIndex] = rr;
+                            subUmps[i].q1TeamCounterLB[homeIndex] = rr;
+                            subUmps[i].q2TeamCounterLB[homeIndex] = rr;
+                            subUmps[i].q2TeamCounterLB[awayIndex] = rr;
                         }
-//                        System.out.println("rr: " + rr + ", r+k:" + (r+k));
-                        sol_subProblems[rr][r+k] = BranchAndBound.subBranchBound(a_solution, 0, rr+1, rr+0, r+k);
-//                        System.out.println("rr: " + rr + ", r: " + r + ", k: " + k + ", sol:" + sol_subProblems[rr][r+k]);
-//                        for (int i=0; i<nRounds; i++) {
-//                            for (int j=0; j<nRounds; j++) {
-//                                System.out.print(sol_subProblems[i][j] + " ");
-//                            }
-//                            System.out.println();
-//                        }
-
-                        // reset counters
-                        for(int i = 0; i < nUmps; i++) {
-                            for(int j = 0; j < nTeams; j++) {
-                                umpires[i].q1TeamCounterLB[j] = Integer.MIN_VALUE;
-                                umpires[i].q2TeamCounterLB[j] = Integer.MIN_VALUE;
-                            }
-                        }
+                        BranchAndBoundParallel subBnB = new BranchAndBoundParallel(a_solution, subUmps);
+                        sol_subProblems[rr][r+k] = subBnB.subBranchBound(0, rr+1, rr+0, r+k);
                         for(int r1 = rr; r1 >= 0; r1--) {
                             for (int r2 = r+k; r2 < nRounds; r2++) {
-//                                if(lowerbounds[r1][r2] < lowerbounds[r1][rr]+sol_subProblems[rr][r+k]+lowerbounds[r+k][r2])
-//                                    System.out.println("Better bound found");
                                 lowerBounds[r1][r2] = Math.max(lowerBounds[r1][r2],
                                         lowerBounds[r1][rr]+sol_subProblems[rr][r+k]+ lowerBounds[r+k][r2]);
                             }
