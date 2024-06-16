@@ -20,8 +20,8 @@ public class BranchAndBoundParallel {
         umpires = new Umpire[Main.nUmps];
         for (int i=0; i<Main.nUmps; i++) {
             umpires[i] = new Umpire(i);
-            umpires[i].q1TeamCounter = Main.umpires[i].q1TeamCounter.clone();
-            umpires[i].q2TeamCounter = Main.umpires[i].q2TeamCounter.clone();
+//            umpires[i].q1TeamCounter = Main.umpires[i].q1TeamCounter.clone();
+//            umpires[i].q2TeamCounter = Main.umpires[i].q2TeamCounter.clone();
         }
         // fix the first round
         for(int i = 0; i < Main.nUmps; i++) {
@@ -122,15 +122,22 @@ public class BranchAndBoundParallel {
                         feasible = false;
                         break;
                     }
-                    if(feasible) {
-                        Solution betterSolution = LocalSearch.localSearch(currentSolution);
+                    String sol = currentSolution.toString();
+                    if(feasible
+//                            && validate(sol)
+                    ) {
                         Main.lock.lock();
-                            if (Main.upperBound > betterSolution.totalDistance) {
-                                Main.best = betterSolution.toString();
-                                Main.upperBound = betterSolution.totalDistance;
-                            Main.writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", Main.best);
+                            if (Main.upperBound > currentSolution.totalDistance) {
+                                Main.best = sol;
+                                Main.upperBound = currentSolution.totalDistance;
+                                if(Main.validate()) {
+                                    System.out.println("NEW BEST SOLUTION: " + Main.upperBound + " (" + (System.currentTimeMillis() - startTime) + "ms)");
+                                    Main.writeSolution("solutions/sol_" + Main.fileName + "_" + Main.q1 + "_" + Main.q2 + ".txt", Main.best);
+                                }
+                                else
+                                    System.out.printf("INVALID SOLUTION (%d)!!!\n%s\n", Main.upperBound, Main.best);
+//                            Main.writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", Main.best);
                             }
-//                        }
                         Main.lock.unlock();
                     }
                 }
@@ -155,7 +162,6 @@ public class BranchAndBoundParallel {
             int away = Main.games[round][res[g]].away - 1;
 
             // if the umpire has already visited the venue in the last q1 consecutive rounds or already officiated one of the teams in the last q2 rounds, mark the game as infeasible
-
             if (ump.q1TeamCounter[home] + Main.q1 > round
                     || ump.q2TeamCounter[home] + Main.q2 > round
                     || ump.q2TeamCounter[away] + Main.q2 > round){
@@ -230,5 +236,88 @@ public class BranchAndBoundParallel {
             }
         }
         return subResult;
+    }
+
+    public static boolean validate(String sol) {
+        boolean valid = true;
+        // convert string to matrix of home locations
+        String[] lines = sol.split("\n");
+        int[][] homeLocations = new int[Main.nUmps][Main.nRounds];
+        for (int i=0; i<Main.nUmps; i++) {
+            String[] locations = lines[i].split(" ");
+            for (int j=0; j<Main.nRounds; j++) {
+                homeLocations[i][j] = Integer.parseInt(locations[j]);
+            }
+        }
+        // check if every umpire visits every location
+        for (int i=0; i<Main.nUmps; i++) {
+            for (int j=0; j<Main.nTeams; j++) {
+                boolean visited = false;
+                for (int k=0; k<Main.nRounds; k++) {
+                    if (homeLocations[i][k] == j+1) {
+                        visited = true;
+                        break;
+                    }
+                }
+                if (!visited) {
+                    return false;
+//                    System.out.println("Umpire " + i + " does not visit location " + (j+1));
+                }
+            }
+        }
+
+        // check q1 constraint
+        for (int i=0; i<Main.nUmps; i++) {
+            for (int j=0; j<Main.nRounds; j++) {
+                int home = homeLocations[i][j];
+                boolean visited = false;
+                for(int k = j+1; k < j+Main.q1; k++) {
+                    if(k >= Main.nRounds) break;
+                    if(homeLocations[i][k] == home) {
+                        visited = true;
+                        break;
+                    }
+                }
+                if (visited) {
+                    return false;
+                }
+            }
+        }
+
+        // create a awayTeams matrix using games
+        int[][] awayTeams = new int[Main.nUmps][Main.nRounds];
+        for (int i=0; i<Main.nRounds; i++) {
+            for (int j=0; j<Main.nUmps; j++) {
+                int home = homeLocations[j][i];
+                for(int g=0; g<Main.nUmps; g++) {
+                    if(Main.games[i][g].home == home) {
+                        awayTeams[j][i] = Main.games[i][g].away;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // check q2 constraint
+        for (int i=0; i<Main.nUmps; i++) {
+            for (int j=0; j<Main.nRounds; j++) {
+                int team = homeLocations[i][j];
+                int homeTeam = awayTeams[i][j];
+                boolean visited = false;
+                for(int k = j+1; k < j+Main.q2; k++) {
+                    if(k >= Main.nRounds) break;
+                    if(homeLocations[i][k] == homeTeam || awayTeams[i][k] == homeTeam || homeLocations[i][k] == team || awayTeams[i][k] == team) {
+                        visited = true;
+//                        System.out.println("Q2 VIOLATION: Umpire: " + i + ", rounds: " + j + " and " + k + ", teams: " + team + " and " + homeTeam);
+//                        System.out.println(sol);
+                        break;
+                    }
+                }
+                if (visited) {
+                    return false;
+                }
+            }
+        }
+        return valid;
     }
 }

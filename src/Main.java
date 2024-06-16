@@ -69,13 +69,23 @@ public class Main {
         // add a delay to start the bnb
 //        Thread.sleep(5000);
 
+
         // Create nUmps threads and fix the next game for the first umpire
         for(int i = 0; i < nUmps; i++) {
             BranchAndBoundParallel bnbi = new BranchAndBoundParallel();
-            bnbi.main = i == 0;
+            Umpire ump = bnbi.umpires[0];
+
             // fix the first game of round 1
             int homeIndex = Main.games[1][i].home-1;
             int awayIndex = Main.games[1][i].away-1;
+
+            // check if we can actually go to this game
+            if (ump.q1TeamCounter[homeIndex] + Main.q1 > 1
+                    || ump.q2TeamCounter[homeIndex] + Main.q2 > 1
+                    || ump.q2TeamCounter[awayIndex] + Main.q2 > 1){
+                continue;
+            }
+
             int cost = bnbi.currentSolution.calculateDistance(1, 0, i);
             bnbi.currentSolution.addGame(1, 0, i, cost);
             bnbi.umpires[0].q1TeamCounter[homeIndex] = 1;
@@ -87,7 +97,10 @@ public class Main {
         while(true) {
             if(prevUpperBound != upperBound) {
                 lock.lock();
-                writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", best);
+                if(validate())
+                    writeSolution("solutions/sol_" + Main.fileName +"_" + Main.q1 + "_" + Main.q2 + ".txt", best);
+                else
+                    System.out.printf("INVALID SOLUTION!!!\n%s\n", best);
                 prevUpperBound = upperBound;
                 lock.unlock();
             }
@@ -106,15 +119,11 @@ public class Main {
                 }
                 break;
             }
-            Thread.sleep(1000);
+            else Thread.sleep(1000);
         }
 
-//        for(int i = 0; i < nUmps; i++) {
-//            futures[i].get();
-//            executors[i].shutdown();
-//        }
-        try {
-            future.get(); // This will block until the calculation is complete
+
+//            future.get(); // This will block until the calculation is complete
             if (DEBUG){
                  //print the lowerbounds matrix
                 for (int i=0; i<nRounds; i++) {
@@ -125,9 +134,6 @@ public class Main {
                 }
             }
 
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
         executor.shutdown();
 
 
@@ -362,5 +368,89 @@ public class Main {
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static boolean validate() {
+        boolean valid = true;
+        // convert string to matrix of home locations
+        String[] lines = best.split("\n");
+        int[][] homeLocations = new int[nUmps][nRounds];
+        for (int i=0; i<nUmps; i++) {
+            String[] locations = lines[i].split(" ");
+            for (int j=0; j<nRounds; j++) {
+                homeLocations[i][j] = Integer.parseInt(locations[j]);
+            }
+        }
+        // check if every umpire visits every location
+        for (int i=0; i<nUmps; i++) {
+            for (int j=0; j<nTeams; j++) {
+                boolean visited = false;
+                for (int k=0; k<nRounds; k++) {
+                    if (homeLocations[i][k] == j+1) {
+                        visited = true;
+                        break;
+                    }
+                }
+                if (!visited) {
+                    valid = false;
+                    System.out.println("Umpire " + i + " does not visit location " + (j+1));
+                }
+            }
+        }
+
+        // check q1 constraint
+        for (int i=0; i<nUmps; i++) {
+            for (int j=0; j<nRounds; j++) {
+                int home = homeLocations[i][j];
+                boolean visited = false;
+                for(int k = j+1; k < j+q1; k++) {
+                    if(k >= nRounds) break;
+                    if(homeLocations[i][k] == home) {
+                        visited = true;
+                        break;
+                    }
+                }
+                if (visited) {
+                    valid = false;
+                    System.out.println("Umpire " + i + " visits location " + home + " within " + q1 + " consecutive rounds");
+                }
+            }
+        }
+
+        // create a awayTeams matrix using games
+        int[][] awayTeams = new int[nUmps][nRounds];
+        for (int i=0; i<nRounds; i++) {
+            for (int j=0; j<nUmps; j++) {
+                int home = homeLocations[j][i];
+                for(int g=0; g<nUmps; g++) {
+                    if(games[i][g].home == home) {
+                        awayTeams[j][i] = games[i][g].away;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // check q2 constraint
+        for (int i=0; i<nUmps; i++) {
+            for (int j=0; j<nRounds; j++) {
+                int team = homeLocations[i][j];
+                int homeTeam = awayTeams[i][j];
+                boolean visited = false;
+                for(int k = j+1; k < j+q2; k++) {
+                    if(k >= nRounds) break;
+                    if(homeLocations[i][k] == homeTeam || awayTeams[i][k] == homeTeam || homeLocations[i][k] == team || awayTeams[i][k] == team) {
+                        visited = true;
+                        System.out.println("Q2 VIOLATION: Umpire: " + i + ", rounds: " + j + " and " + k + ", teams: " + team + " and " + homeTeam);
+                        break;
+                    }
+                }
+                if (visited) {
+                    valid = false;
+//                    System.out.println("Umpire " + i + " visits location " + team + " within " + q2 + " consecutive rounds");
+                }
+            }
+        }
+        return valid;
     }
 }
