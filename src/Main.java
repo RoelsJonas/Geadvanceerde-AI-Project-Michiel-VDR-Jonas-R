@@ -288,7 +288,9 @@ public class Main {
             System.out.println("nRounds: " + nRounds);
         }
 
-        for (int i=0; i<2; i++) reader.readLine();
+        do {
+            line = reader.readLine();
+        } while (!line.contains("["));
 
         // Read the distance matrix
         dist = new int[nTeams][nTeams];
@@ -310,7 +312,10 @@ public class Main {
             }
         }
 
-        for (int i=0; i<3; i++) reader.readLine();
+        do {
+            line = reader.readLine();
+        } while (!line.contains("["));
+
 
         // Read the opponents matrix
         opponents = new int[nRounds][nTeams];
