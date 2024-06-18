@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="Geadvanceerde-AI-Project-Michiel-VDR-Jonas-R:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/Geadvanceerde_AI_Project_Michiel_VDR_Jonas_R_jar</output-path>
+    <root id="archive" name="Geadvanceerde-AI-Project-Michiel-VDR-Jonas-R.jar">
+      <element id="module-output" name="Geadvanceerde-AI-Project-Michiel-VDR-Jonas-R" />
+    </root>
+  </artifact>
+</component>

@@ -6,8 +6,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Main {
-    // COMMAND LINE CALL:
-    // VALIDATE THE SOLUTION USING  java -jar validator.jar .\\instances\\umps8.txt 2 2 .\\solutions\\sol_umps8_2_2.txt
     // CONSTANTS
     public static final boolean DEBUG = true;
     public static final boolean PARTIAL_MATCH_EN = true;
