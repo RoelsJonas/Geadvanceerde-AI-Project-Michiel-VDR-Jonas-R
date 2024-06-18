@@ -1,0 +1,25 @@
+	 round: 2, prunes: 84, secondary prunes: 849, 0.909967845659164
+	 round: 3, prunes: 62, secondary prunes: 5847, 0.9895075308850906
+	 round: 4, prunes: 694, secondary prunes: 52981, 0.9870703306939916
+	 round: 5, prunes: 2614, secondary prunes: 574434, 0.99547004755237
+	 round: 6, prunes: 5263, secondary prunes: 1737642, 0.9969803288188398
+	 round: 7, prunes: 10503, secondary prunes: 675041, 0.9846793203645572
+	 round: 8, prunes: 39031, secondary prunes: 464785, 0.9225292567127682
+	 round: 9, prunes: 17337, secondary prunes: 1819128, 0.9905595804984032
+	 round: 10, prunes: 164943, secondary prunes: 8037914, 0.979892005919401
+	 round: 11, prunes: 69065, secondary prunes: 11499536, 0.994029960926131
+	 round: 12, prunes: 95357, secondary prunes: 14797193, 0.993596999842203
+	 round: 13, prunes: 111786, secondary prunes: 21345418, 0.9947902811568553
+	 round: 14, prunes: 128511, secondary prunes: 14277992, 0.9910796534037442
+	 round: 15, prunes: 35352, secondary prunes: 12512726, 0.9971826761038622
+	 round: 16, prunes: 74345, secondary prunes: 11673940, 0.9936718423157082
+	 round: 17, prunes: 287246, secondary prunes: 5946604, 0.9539215733455249
+	 round: 18, prunes: 297381, secondary prunes: 6307723, 0.954977090443996
+	 round: 19, prunes: 25275, secondary prunes: 4306244, 0.9941648645659872
+	 round: 20, prunes: 39182, secondary prunes: 5865188, 0.9933638982651832
+	 round: 21, prunes: 60870, secondary prunes: 6473523, 0.9906846741541258
+	 round: 22, prunes: 106487, secondary prunes: 13921685, 0.9924090608526899
+	 round: 23, prunes: 149643, secondary prunes: 9792830, 0.984949116784124
+	 round: 24, prunes: 69995, secondary prunes: 4242496, 0.9837692414894316
+	 round: 25, prunes: 1258, secondary prunes: 886355, 0.9985827156654984
+Total: 68055
